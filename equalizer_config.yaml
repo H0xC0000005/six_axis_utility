@@ -1,0 +1,35 @@
+# available filter modes: EMA(windowed), MA 
+Yaw:
+  k: 10
+  FilterMode: 
+    mode: EMA 
+    alpha: 0.4
+  enable: false
+Pitch:
+  k: 5
+  FilterMode: 
+    mode: Wiener
+    alpha: 0.4
+  gain: 1.5
+Roll: 
+  k: 5
+  FilterMode: 
+    mode: Wiener
+    alpha: 0.4
+Sway:
+  k: 8
+  FilterMode: 
+    mode: Wiener 
+    # noise: 0.5
+Surge:
+  k: 10
+  FilterMode: 
+    mode: Butter
+    fs: 40
+    cutoff: 10
+    order: 2 
+Heave:
+  k: 6
+  FilterMode: 
+    mode: Wiener
+    alpha: 0.3
