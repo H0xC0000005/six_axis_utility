@@ -4,6 +4,7 @@ All signal processing utilities witch only refines data without changing its sha
 Including low-pass filters, compression, etc.
 """
 
+from matplotlib import pyplot as plt
 import numpy as np
 from scipy.signal import butter, lfilter, wiener
 from filterpy.kalman import KalmanFilter
@@ -207,23 +208,36 @@ class DynamicRangeCompressor:
     """
 
     def __init__(
-        self, threshold=0.5, ratio=3, attack=0.01, release=0.1, knee_width=0.1
+        self,
+        threshold: float = 0.5,
+        ratio: float = 3,
+        attack: float = 0.01,
+        release: float = 0.1,
+        knee_width: float = 0.1,
+        bias: float = 0,
     ):
+        assert threshold > 0, f"threshold must be positive"
         self.threshold = threshold
+        assert ratio >= 1, f"ratio must be greater than 1"
         self.ratio = ratio
+        assert attack > 0, f"attack must be positive"
         self.attack = attack
+        assert release > 0, f"release must be positive"
         self.release = release
+        assert knee_width > 0, f"knee width must be positive"
         self.knee_width = knee_width
+        self.gain_reduction = 0
+        self.bias = bias
         self.reset()
 
-    def __call__(self, signal_value: float | np.ndarray) -> float:
+    def compress(self, signal_value: float | np.ndarray) -> float:
         if not isinstance(signal_value, float | int):
             # if not a float or int, assume that it is a container and just get the latest one
             signal_value = signal_value[-1]
         """
         applies a soft knee.
         """
-        abs_value = abs(signal_value)
+        abs_value = abs(signal_value - self.bias)
 
         # Check if we're in the knee region
         if abs_value > self.threshold + self.knee_width / 2:
@@ -270,3 +284,55 @@ class DynamicRangeCompressor:
 """
 utility to drive filters to work
 """
+
+
+"""
+test functions
+
+"""
+
+
+def test_dynamic_range_compressor():
+    # Parameters for the sine wave
+    sample_rate = 1000  # Samples per second
+    duration = 2  # Duration in seconds
+    frequency = 5  # Frequency of the sine wave in Hz
+    time = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    sine_wave = np.sin(2 * np.pi * frequency * time)
+
+    # Add noise and spikes to the sine wave
+    noise = np.random.normal(0, 0.1, sine_wave.shape)  # Gaussian noise
+    spikes = np.zeros_like(sine_wave)
+    spike_indices = np.random.choice(len(sine_wave), size=10, replace=False)
+    spikes[spike_indices] = np.random.uniform(-1, 1, size=10)  # Random spikes
+    noisy_sine_wave = sine_wave + noise + spikes
+
+    # Create an instance of the DynamicRangeCompressor
+    compressor = DynamicRangeCompressor(
+        threshold=0.5, ratio=4, attack=0.01, release=0.05, knee_width=0.2
+    )
+
+    # Apply compression to the noisy sine wave
+    compressed_wave = []
+    for sample in noisy_sine_wave:
+        compressed_sample = compressor.compress(sample)
+        compressed_wave.append(compressed_sample)
+    compressed_wave = np.array(compressed_wave)
+
+    # Plot the original and compressed sine wave
+    plt.figure(figsize=(12, 6))
+    plt.plot(time, noisy_sine_wave, label="Original Signal", linewidth=1, linestyle="-")
+    plt.plot(
+        time, compressed_wave, label="Compressed Signal", linewidth=1, linestyle="-"
+    )
+    plt.xlabel("Time (s)")
+    plt.ylabel("Amplitude")
+    plt.title("Original and Compressed Sine Wave with Noise and Spikes")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+
+# Test the DynamicRangeCompressor with a sine wave
+if __name__ == "__main__":
+    test_dynamic_range_compressor()

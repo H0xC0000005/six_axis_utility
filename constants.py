@@ -17,7 +17,7 @@ filter related constants. mostly names definition
 # whether this dimension is in the output.
 ENABLE_DIM_NAME = "enable"
 
-FILTERMODE_ITEM_NAME = "FilterMode"
+FILTERMODE_ITEM_NAME = "filterMode"
 MODE_NAME = "mode"
 
 IDENTITY_MODE_NAME = "identity"
@@ -45,6 +45,17 @@ AVAILABLE_MODES = {EMA_NAME, MA_NAME, BUTTER_NAME, WIENER_NAME, KALMAN_NAME}
 GAIN_NAME = "gain"
 # default gain, currently identity. can be modified
 DEFAULT_GAIN = 1
+
+COMPRESSOR_NAME = "DynamicRangeCompressor"
+COMPRESSOR_THRESHOLD_NAME = "threshold"
+# compression ratio. Must > 1; else the program is bugged
+COMPRESSOR_RATIO_NAME = "ratio"
+COMPRESSOR_ATTACK_NAME = "attack"
+COMPRESSOR_RELEASE_NAME = "release"
+COMPRESSOR_KNEEWIDTH_NAME = "kneeWidth"
+COMPRESSOR_BIAS_NAME = "bias"
+
+CLAMP_THRESHOLD_NAME = "clampThreshold"
 
 """
 misc definitions, like debug variables
