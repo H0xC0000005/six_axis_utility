@@ -1,19 +1,35 @@
-this repo is the driver for the six axis platform, on the application side.
+# Six Axis Utility
 
-the SDK used to directly drive the platform should be installed seperately.
+This repository contains the driver for the Six Axis platform on the application side.
 
-Config specs
+## Overview
 
-the equalizer uses a yaml config file to equalize the dimensions. the parameters of the equalizer are specified in this section, as follows:
+The SDK used to directly drive the platform should be installed separately. This utility allows you to configure, control, and manage the Six Axis platform effectively.
 
-enable: bool, whether this dim is enabled. 
+## Configuration Specifications
 
-FilterMode: an item that specifies the filtering mode of this dimension. this is a nested item, the parameters of this items are:
+The equalizer uses a YAML config file to equalize the dimensions. The parameters of the equalizer are specified as follows:
 
--   mode: string, the filter applied. if not specified, by default identity filter is applied.
+- **enable** (`bool`): Specifies if this dimension is enabled.
 
--   k: int, the filter window. the filter only applies to this window, achieving a pseudo-FIR response. this can be used to adjust granularity and affect filter behavior.
+- **FilterMode** (`dict`): Defines the filtering mode for this dimension. This is a nested item with the following parameters:
+  - **mode** (`string`): The filter applied. If not specified, the default identity filter is used.
+  - **k** (`int`): The filter window. This parameter adjusts the granularity and affects the filter behavior, creating a pseudo-FIR response.
 
--   filter parameters: this depends on filter. please refer to constants.py for a complete definition of filter required variables.
+- **filter parameters**: The parameters depend on the filter type. Please refer to `constants.py` for a complete definition of the required variables.
 
-gain: float, how much gain is applied to this channel. this is applied as the very last step of the equalizer pipeline.
+- **gain** (`float`): Specifies how much gain is applied to this channel. This is applied at the very last step of the equalizer pipeline.
+
+## Installation
+
+To install this utility, clone the repository and install any necessary dependencies:
+
+```sh
+# Clone the repository
+git clone <repository-url>
+
+# Change directory
+cd six_axis_utility
+
+# Install dependencies
+pip install -r requirements.txt
