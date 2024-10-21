@@ -1,3 +1,9 @@
+"""
+this is an off-the-shelf tool for older python version to remove all the comments and type hints.
+by specifying the root directory to clean, this tool do the job for all .py files under the root directory, recursively.
+WARNING: don't push after using this tool! 
+"""
+
 import ast
 import os
 import subprocess

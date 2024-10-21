@@ -1,0 +1,11 @@
+# you must have a rospy environment and carla environment to run this driver. 
+# these two packages cannot be installed via pypi:
+# - rospy
+# - sensor_msgs
+
+numpy
+scipy
+matplotlib
+pandas
+yaml
+astor
