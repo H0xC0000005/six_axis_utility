@@ -1,6 +1,6 @@
 Yaw: true
-Pitch: false
-Roll: false
-Sway: false
+Pitch: true
+Roll: true
+Sway: true
 Heave: true
-Surge: false
+Surge: true

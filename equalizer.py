@@ -1,19 +1,10 @@
-"""
-functions of equalizer:
-1: convert yaw from position to acceleration
-2: platform filters pulse value. need to use a low pass filter to smooth
-3: channelwise transform, currently including scaling and low pass filtering
-"""
-
 from collections import deque
 import time
 from matplotlib import pyplot as plt
 import pandas as pd
 import yaml
 import random
-
 from scipy.signal import savgol_filter
-
 from constants import *
 from hyperparams import *
 from utilities import *
@@ -23,17 +14,10 @@ from filters import *
 class Equalizer:
     dim_names = (YAW_NAME, PITCH_NAME, ROLL_NAME, SWAY_NAME, SURGE_NAME, HEAVE_NAME)
 
-    def __init__(self, config_path: str):
-        """
-        Args:
-            config_path: the .yaml config file path.
-        """
+    def __init__(self, config_path):
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         k_yaw = config[YAW_NAME]["k"]
-
-        # self.prev_velocities_yaw = deque(maxlen=k_yaw - 1)
-        # self.prev_accelerations_yaw = deque(maxlen=k_yaw - 2)
         self.prev_velocities_yaw = deque(maxlen=k_yaw + 1)
         self.prev_positions_yaw = deque(maxlen=k_yaw + 2)
         self.compressors = {}
@@ -41,11 +25,9 @@ class Equalizer:
         self.clamp_thresholds = {}
         max_k = -1
         for dim_name in self.dim_names:
-            # process k and deque
             cur_k = config[dim_name]["k"]
             self.prev_dim_values[dim_name] = deque(maxlen=cur_k)
             max_k = max(max_k, cur_k)
-            # process compressors
             if COMPRESSOR_NAME not in config[dim_name]:
                 self.compressors[dim_name] = None
             else:
@@ -66,89 +48,54 @@ class Equalizer:
                     raise ValueError(
                         f"if you want to use a dynamic range compressor, you must specify all the specifications."
                     )
-            # process clamp threshold
-
             if CLAMP_THRESHOLD_NAME in config[dim_name]:
                 self.clamp_thresholds[dim_name] = config[dim_name][CLAMP_THRESHOLD_NAME]
             else:
                 self.clamp_thresholds[dim_name] = float("inf")
             pass
-
         self.prev_timesteps = deque(maxlen=max_k)
         self.config = config
 
-    def is_dim_enabled(self, dim_name: str):
-        """
-        check whether a dimension is in the output.
-        if the config is missing, by default it is in the output.
-        """
+    def is_dim_enabled(self, dim_name):
         cur_dim_config = self.config[dim_name]
         if ENABLE_DIM_NAME not in cur_dim_config or self.config[dim_name] == True:
             return True
         else:
             return False
 
-    def update_time(self, new_time: float):
-        """
-        since there are multiple calculations, instance storage is used
-        to sync the time for each signal arrival
-        DEPRECATED AFTER ADDING TIME TO CUR STEP DICT.
-        RETAINED FOR DEBUG.
-        """
+    def update_time(self, new_time):
         self.sec_last_time = self.last_time
         self.last_time = self.cur_time
         if not DEBUG or self.cur_time is None:
             self.cur_time = new_time
         else:
-            # assume that it is 40 frames per second
             self.cur_time += 1 / 40
 
-    def convert_last_yaw_to_accel(self) -> float:
-        """
-        convert yaw position reading to acceleration,
-        and update yaw acceleration computation caches
-        """
+    def convert_last_yaw_to_accel(self):
         if not self.is_dim_enabled(YAW_NAME):
             return 0
         acceleration = 0
-        if (
-            len(self.prev_positions_yaw) > 2
-        ):  # only compute accel if we have 3+ positions, and vel if 2+
+        if len(self.prev_positions_yaw) > 2:
             delta = self.prev_timesteps[-1] - self.prev_timesteps[-2]
-            # assume that yaw is in radian. retrieve
             cur_yaw_velocity = (
                 self.prev_positions_yaw[-1] - self.prev_positions_yaw[-2]
             ) / delta
-            self.prev_velocities_yaw.append((cur_yaw_velocity))
+            self.prev_velocities_yaw.append(cur_yaw_velocity)
             if len(self.prev_positions_yaw) > 3:
-                # apply a savgol filter to velocity before computing acceleration
+                window_length = min(len(self.prev_velocities_yaw), 10)
+                if window_length % 2 == 0:
+                    window_length -= 1
                 smoothed_velocities = savgol_filter(
                     self.prev_velocities_yaw,
-                    window_length=min(len(self.prev_velocities_yaw), 10),
+                    window_length=window_length,
                     polyorder=min(len(self.prev_velocities_yaw), 2) - 1,
                 )
-                # TODO: extend the acceleration window, not just using the last two velocities
-                # TODO: add timestamp support in data passing
-                # UPDATE: compute acceleration directly from positions
                 acceleration = (smoothed_velocities[-1] - smoothed_velocities[-2]) / (
                     (self.prev_timesteps[-1] - self.prev_timesteps[-3]) / 2
                 )
-                # acceleration = (
-                #     self.prev_velocities_yaw[-1] - self.prev_velocities_yaw[-2]
-                # ) / ((self.prev_timesteps[-1] - self.prev_timesteps[-3]) / 2)
         return acceleration
 
-    def clamp_value_dim(
-        self,
-        dim_name: str,
-        *,
-        value: float | None = None,
-        inplace: bool = True,
-    ):
-        """
-        clamp the specified dim.
-        this is done on updated data, and can be inplace, i.e. store the clamped value as the latest element.
-        """
+    def clamp_value_dim(self, dim_name, *, value=None, inplace=True):
         if value is None:
             value = self.prev_dim_values[dim_name][-1]
         if len(self.prev_dim_values[dim_name]) < 2:
@@ -167,46 +114,28 @@ class Equalizer:
             self.prev_dim_values[dim_name][-1] = value
         return value
 
-    def clamp_last_values(
-        self,
-        *,
-        values: dict[str, float] | None = None,
-        inplace: bool = True,
-    ):
+    def clamp_last_values(self, *, values=None, inplace=True):
         result = {}
         for dim in self.dim_names:
             cur_value = None if values is None else values[dim]
             result[dim] = self.clamp_value_dim(dim, value=cur_value, inplace=inplace)
         return result
 
-    def update_last_values(self, values_dict: dict[str, float]):
-        """
-        update the recorded values.
-        notice that for yaw, conversion of yaw positions to accelerations is
-        done here.
-        """
+    def update_last_values(self, values_dict):
         for dim_name in self.dim_names:
             if dim_name == YAW_NAME:
-                # need to convert position to acceleration for yaw
                 yaw_val = values_dict[YAW_NAME]
                 self.prev_positions_yaw.append(yaw_val)
                 yaw_accel = self.convert_last_yaw_to_accel()
                 self.prev_dim_values[dim_name].append(yaw_accel)
             else:
                 self.prev_dim_values[dim_name].append(values_dict[dim_name])
-        # update timestep. added in v1.2
         self.prev_timesteps.append(values_dict[TIMESTAMP_NAME])
 
-    def normalize_dim(
-        self, dim_name: str, *, value: float | None = None, inplace: bool = False
-    ) -> float:
-        """
-        produce the normalized value for the latest timestep (for control)
-        """
+    def normalize_dim(self, dim_name, *, value=None, inplace=False):
         if not self.is_dim_enabled(dim_name):
             return 0
         if FILTERMODE_ITEM_NAME not in self.config[dim_name]:
-            # filter mode not specified, by default apply identity filter
             return self.prev_dim_values[dim_name][-1]
         cur_config = self.config[dim_name][FILTERMODE_ITEM_NAME]
         mode = cur_config[MODE_NAME]
@@ -216,10 +145,7 @@ class Equalizer:
             if value is None:
                 value = self.prev_dim_values[dim_name]
             if mode == EMA_NAME:
-                ret = apply_EMA_lastvalue(
-                    value,
-                    cur_config[ALPHA_NAME],
-                )
+                ret = apply_EMA_lastvalue(value, cur_config[ALPHA_NAME])
             elif mode == MA_NAME:
                 return apply_MA_lastvalue(self.prev_dim_values[dim_name])
             elif mode == BUTTER_NAME:
@@ -228,10 +154,7 @@ class Equalizer:
                 else:
                     order = 2
                 ret = apply_Butterworth_lastvalue(
-                    value,
-                    cur_config[CUTOFF_NAME],
-                    cur_config[FS_NAME],
-                    order,
+                    value, cur_config[CUTOFF_NAME], cur_config[FS_NAME], order
                 )
             elif mode == WIENER_NAME:
                 if NOISE_NAME in cur_config:
@@ -239,9 +162,7 @@ class Equalizer:
                 else:
                     noise = None
                 ret = apply_Wiener_lastvalue(
-                    value,
-                    len(self.prev_dim_values[dim_name]),
-                    noise,
+                    value, len(self.prev_dim_values[dim_name]), noise
                 )
             elif mode == KALMAN_NAME:
                 R = cur_config[KALMAN_R_NAME]
@@ -258,9 +179,7 @@ class Equalizer:
             self.prev_dim_values[dim_name] = ret
         return ret
 
-    def normalize(
-        self, *, values: dict[str, float] | None = None, inplace: bool = False
-    ) -> dict[str, float]:
+    def normalize(self, *, values=None, inplace=False):
         result = {}
         for dim in self.dim_names:
             value = None if values is None else values[dim]
@@ -268,38 +187,23 @@ class Equalizer:
             result[dim] = cur_dim_result
         return result
 
-    def apply_gain(self, values: dict[str, float]):
-        """
-        apply gain for each dimension.
-        in-place since I don't want to mess the original data as this operation is iterative
-        and changes the scale.
-        """
+    def apply_gain(self, values):
         for dim in self.dim_names:
             self.apply_gain_dim(values, dim)
 
-    def apply_gain_dim(self, values: dict[str, float], dim_name: str):
-        """
-        apply gain for the specified dimension.
-        the gain is calculated around the bias. the bias is by default 0.
-        """
+    def apply_gain_dim(self, values, dim_name):
         if not self.is_dim_enabled(dim_name):
             return
         bias = 0
-        # TODO: wierd logic wiring. need to consider whether can we refactor the bias
-        # outside the compressor, since the bias may be used by multiple components in the equalizer
         if COMPRESSOR_NAME in self.config[dim_name]:
-            # HACK: if compressor is specified, all specs of the parameter are there by requirement.
             bias = self.config[dim_name][COMPRESSOR_NAME][COMPRESSOR_BIAS_NAME]
         if GAIN_NAME in self.config[dim_name]:
             gain = self.config[dim_name][GAIN_NAME]
         else:
             gain = DEFAULT_GAIN
-        # values[dim_name] *= gain
         values[dim_name] = bias + (values[dim_name] - bias) * gain
 
-    def compress(
-        self, *, values: dict[str, float] | None = None, inplace: bool = False
-    ) -> dict[str, float]:
+    def compress(self, *, values=None, inplace=False):
         result = {}
         for dim in self.dim_names:
             cur_value = (
@@ -308,9 +212,7 @@ class Equalizer:
             result[dim] = self.compress_dim(dim, value=cur_value, inplace=inplace)
         return result
 
-    def compress_dim(
-        self, dim_name: str, *, value: float | None = None, inplace: bool = True
-    ) -> float:
+    def compress_dim(self, dim_name, *, value=None, inplace=True):
         if value is None:
             value = self.prev_dim_values[dim_name][-1]
         if self.compressors[dim_name] is not None:
@@ -332,40 +234,28 @@ class Equalizer:
             latest_values_dict = msg
         return self.equalize_pipeline(latest_values_dict)
 
-    def equalize_pipeline(self, latest_values_dict: dict[str, float]):
+    def equalize_pipeline(self, latest_values_dict):
         self.update_last_values(latest_values_dict)
-        # first compress, then normalize
-        # result = self.compress(inplace=False)
         self.compress(inplace=True)
-        # since this class use internal storage, i use push & update apporach
-        # result = self.normalize(values=result, inplace=False)
         result = self.normalize(values=None, inplace=False)
-        # apply clamp after all processing and before gain
         result = self.clamp_last_values(inplace=True)
         self.apply_gain(result)
+        result[TIMESTAMP_NAME] = self.prev_timesteps[-1]
         return result
 
 
-"""
-test functions
-"""
-
-
 def prepare_test_data():
-
-    # Load the CSV file
     file_path = "./exploration/imu_data_2.csv"
     df = pd.read_csv(file_path)
     return df
 
 
 def test_equalizer_console():
-
     eq = Equalizer(
         "D:\\repos\\carla side code\\six_axis_utility\\equalizer_config.yaml"
     )
 
-    def generate_test_data() -> dict[str, float]:
+    def generate_test_data():
         cur_val = random.random()
         return {x: cur_val for x in Equalizer.dim_names}
 
@@ -384,12 +274,7 @@ def test_equalizer_plot():
     equalizer = Equalizer(
         "D:\\repos\\carla side code\\six_axis_utility\\equalizer_config.yaml"
     )
-    # Simulated real-time signal input
     time = np.linspace(0, 1, 1000)
-    # original_signal = np.sin(2 * np.pi * 5 * time) * 0.8 + np.random.randn(1000) * 0.05
-    # original_signal[100:150] += 0.5  # Adding a sudden peak for testing
-    # original_signal[200:250] -= 0.5  # Adding a sudden negative peak for testing
-    # original_signal = np.sin(2 * np.pi * 5 * time) * 0.8 + np.random.randn(1000) * 0.01
     df = prepare_test_data()
     yaw, pitch, roll = quaternion_to_euler(
         [
@@ -399,10 +284,7 @@ def test_equalizer_plot():
             df["orientation_w"],
         ]
     )
-    # original_signal = yaw
     original_signal = df["linear_acceleration_z"]
-
-    # Process each value in the signal one at a time
     compressed_signal = {
         dim_name: np.zeros_like(original_signal) for dim_name in Equalizer.dim_names
     }
@@ -413,11 +295,8 @@ def test_equalizer_plot():
         for dim_name in Equalizer.dim_names:
             compressed_signal[dim_name][i] = cur_result[dim_name]
             pass
-
     dim_to_test = HEAVE_NAME
-    # Plot the result
     plt.figure(figsize=(12, 6))
-    # plt.plot(time, original_signal, label="Original Signal")
     plt.plot(df["timestamp"], original_signal, label="Original Signal")
     plt.plot(
         df["timestamp"],

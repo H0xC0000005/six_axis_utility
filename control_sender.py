@@ -6,9 +6,7 @@ import threading
 import signal
 import sys
 from typing import Tuple
-
 import ipaddress
-
 from hyperparams import Hyperparams
 from constants import *
 
@@ -37,7 +35,6 @@ class SpecialEffect:
 
 
 class CustomGamePack:
-
     pack_format = "<Iffffffl"
 
     def __init__(self):
@@ -50,7 +47,7 @@ class CustomGamePack:
         self.Sway = 0.0
         self.SpecialEffect = SpecialEffect.NoneEffect
 
-    def to_bytes(self) -> bytes:
+    def to_bytes(self):
         return struct.pack(
             CustomGamePack.pack_format,
             self.GameStatus,
@@ -64,7 +61,7 @@ class CustomGamePack:
         )
 
     @staticmethod
-    def from_bytes(byte_data: bytes):
+    def from_bytes(byte_data):
         unpacked_data = struct.unpack(CustomGamePack.pack_format, byte_data)
         game_pack = CustomGamePack()
         game_pack.GameStatus = unpacked_data[0]
@@ -89,7 +86,7 @@ class CustomGamePack:
         print("----------------------------------------------------------")
 
     @classmethod
-    def from_dict(cls, dict_val: dict[str, float]) -> "CustomGamePack":
+    def from_dict(cls, dict_val):
         result = cls()
         result.Surge = dict_val[SURGE_NAME]
         result.Heave = dict_val[HEAVE_NAME]
@@ -101,6 +98,7 @@ class CustomGamePack:
 
 
 class ControlSender:
+
     def __init__(self):
         self.status_count = 0
 
@@ -108,11 +106,9 @@ class ControlSender:
         print(f"Generating next pack. Status count: {self.status_count}")
         time.sleep(Hyperparams.interval)
         result = CustomGamePack()
-
         phase_period = Hyperparams.period // 3
         phase = self.status_count % phase_period
         cur_value = math.sin(phase / phase_period * 2 * math.pi) * Hyperparams.amplitude
-
         if self.status_count // phase_period < 1:
             result.Roll = cur_value
         elif self.status_count // phase_period < 2:
@@ -122,7 +118,6 @@ class ControlSender:
         else:
             print("Finished a cycle. Resetting status")
             self.status_count = 0
-
         result.GameStatus = GameStatus.GameStart
         return result
 
@@ -130,13 +125,9 @@ class ControlSender:
         print(f"Generating next pack. Status count: {self.status_count}")
         time.sleep(Hyperparams.interval)
         result = CustomGamePack()
-
         phase_period = Hyperparams.period // 6
         phase = self.status_count % phase_period
         cur_value = math.sin(phase / phase_period * 2 * math.pi) * Hyperparams.amplitude
-
-        # WARNING: units of pitch/roll/yaw is percentage of piston length.
-        # units of surge/heave/sway is much larger, so be careful!
         if self.status_count // phase_period < 1:
             result.Roll = cur_value
         elif self.status_count // phase_period < 2:
@@ -152,7 +143,6 @@ class ControlSender:
         else:
             print("Finished a cycle. Resetting status")
             self.status_count = 0
-
         result.GameStatus = GameStatus.GameStart
         return result
 
@@ -164,7 +154,7 @@ class ControlSender:
         result.GameStatus = GameStatus.GameStart
         return result
 
-    def test_single_dim_sinusodial(self, dim: str):
+    def test_single_dim_sinusodial(self, dim):
         rollname, pitchname, yawname, surgename, swayname, heavename = (
             "Roll",
             "Pitch",
@@ -182,7 +172,6 @@ class ControlSender:
         phase_period = Hyperparams.period // 6
         phase = self.status_count % phase_period
         cur_value = math.sin(phase / phase_period * 2 * math.pi) * Hyperparams.amplitude
-
         if dim == rollname:
             result.Roll = cur_value
         elif dim == pitchname:
@@ -199,17 +188,15 @@ class ControlSender:
         return result
 
 
-def send_pack(udp_client: socket.socket, end_point: IPEndpoint, pack: CustomGamePack):
+def send_pack(udp_client, end_point, pack):
     pack_serialized = pack.to_bytes()
     udp_client.sendto(pack_serialized, end_point)
     pack.print_stats()
 
 
-def on_exit(
-    sig, frame, udp_client: socket.socket, end_point: IPEndpoint, control_sender
-):
+def on_exit(sig, frame, udp_client, end_point, control_sender):
     print("Keyboard interrupt. Sending GameOver packs")
-    control_sender.status_count = 0  # Stop the main loop
+    control_sender.status_count = 0
     end_pack = CustomGamePack()
     for _ in range(10):
         print("Sending end pack")
@@ -233,21 +220,14 @@ def main():
         print(f"i.e. six axis platform pc.")
         ip_address = "192.168.0.208"
     port = 15620
-    end_point = (ip_address, port)
-
+    end_point = ip_address, port
     udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    # Set up the signal handler for graceful shutdown
     signal.signal(
         signal.SIGINT,
         lambda sig, frame: on_exit(sig, frame, udp_client, end_point, control_sender),
     )
-
     try:
         while True:
-            # TODO: change this line to test with different patterns
-            # -
-            # current_pack = control_sender.generate_next_pack()
             current_pack = control_sender.generate_next_pack()
             send_pack(udp_client, end_point, current_pack)
             control_sender.status_count += 1

@@ -2,30 +2,33 @@
 # available filter modes: EMA(windowed), MA 
 Yaw:
   k: 10
+  clampThreshold: 0.5
   filterMode: 
     mode: EMA 
-    alpha: 0.4
+    alpha: 0.3
   enable: false
 Pitch:
   k: 6
   filterMode: 
     mode: EMA
-    alpha: 0.4
-  gain: 1.5
+    alpha: 0.3
+  gain: 2
 Roll: 
   k: 6
   filterMode: 
     mode: EMA
-    alpha: 0.4
+    alpha: 0.3
   gain: 1.2
 Sway:
   k: 6
+  clampThreshold: 0.5
   filterMode: 
     mode: EMA 
     # noise: 0.5
-    alpha: 0.4
+    alpha: 0.3
 Surge:
-  k: 5
+  k: 8
+  clampThreshold: 0.5
   filterMode: 
     # mode: Butter
     # fs: 40
@@ -34,19 +37,19 @@ Surge:
     mode: EMA
     alpha: 0.3
 Heave:
-  k: 6
+  k: 8
   # don't use wiener. heave has a bias from gravity and wiener doesnt work
   filterMode: 
     mode: EMA
-    alpha: 0.4
+    alpha: 0.2
   gain: 0.8
   clampThreshold: 0.5
-  DynamicRangeCompressor:
-  # TODO: add bias
-    bias: 9.81
-    threshold: 2
-    ratio: 4 
-    attack: 0.2
-    release: 0.1
-    kneeWidth: 0.5
+  # DynamicRangeCompressor:
+  # # TODO: add bias
+  #   bias: 9.81
+  #   threshold: 2
+  #   ratio: 4 
+  #   attack: 0.2
+  #   release: 0.1
+  #   kneeWidth: 0.5
 
