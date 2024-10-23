@@ -72,3 +72,8 @@ debug.log
 
 # SQLite database files
 *.sqlite3
+
+# ------------------------
+# project specific files
+tests/
+carla_data/*.csv

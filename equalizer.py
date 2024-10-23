@@ -36,7 +36,7 @@ class Equalizer:
         # self.prev_accelerations_yaw = deque(maxlen=k_yaw - 2)
         self.prev_velocities_yaw = deque(maxlen=k_yaw + 1)
         self.prev_positions_yaw = deque(maxlen=k_yaw + 2)
-        self.compressors: dict[str, DynamicRangeCompressor] = {}
+        self.compressors = {}
         self.prev_dim_values = {}
         self.clamp_thresholds = {}
         max_k = -1
@@ -300,7 +300,7 @@ class Equalizer:
     def compress(
         self, *, values: dict[str, float] | None = None, inplace: bool = False
     ) -> dict[str, float]:
-        result: dict[str, float] = {}
+        result = {}
         for dim in self.dim_names:
             cur_value = (
                 values[dim] if values is not None else self.prev_dim_values[dim][-1]
@@ -354,9 +354,7 @@ test functions
 def prepare_test_data():
 
     # Load the CSV file
-    file_path = (
-        "D:\\repos\\carla side code\\six_axis_utility\\exploration\\imu_data_2.csv"
-    )
+    file_path = "./exploration/imu_data_2.csv"
     df = pd.read_csv(file_path)
     return df
 

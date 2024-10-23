@@ -9,17 +9,18 @@ import time
 import math
 import socket
 
+
 from control_sender import CustomGamePack, ControlSender, GameStatus, send_pack
 from hyperparams import *
 from utilities import *
 from equalizer import Equalizer
-
-import numpy as np
-from scipy.spatial.transform import Rotation as R
+from recorder import Recorder
 
 
 class IMUMotionController:
-    def __init__(self, equalizer: Equalizer):
+    def __init__(
+        self, equalizer: Equalizer | None = None, recorder: Recorder | None = None
+    ):
         rospy.init_node("imu_motion_controller")
 
         self.subscription = rospy.Subscriber("/imu/imu", Imu, self.imu_callback)
@@ -35,16 +36,23 @@ class IMUMotionController:
         self.equalizer = equalizer
         self.do_equalization = True
 
+        self.recorder = recorder
+
     def imu_callback(self, msg):
 
         # Process IMU data
         result_dict = convert_carla_imu_message_to_dict(msg)
         self.pack_imu_to_six_axis_value(result_dict)
-        if self.do_equalization:
+        if self.do_equalization and self.equalizer is not None:
             result_dict = self.equalizer.equalize_pipeline(result_dict)
         # self.multiply_imu(result_dict, (1, 0.1))
 
         result = CustomGamePack.from_dict(result_dict)
+        result.GameStatus = GameStatus.GameStart
+
+        if self.recorder is not None:
+            self.recorder.update_record(result_dict)
+
         # Send telemetry to six axis platform
         send_pack(self.udp_client, self.end_point, result)
 
@@ -52,7 +60,7 @@ class IMUMotionController:
         rospy.spin()
 
     def stop(self):
-        pass
+        self.recorder.to_csv(f"./carla_data/carla_record_{time.time_ns}.csv")
 
     def multiply_imu(
         self, pack_dict: dict[str, float], multipliers: float | Sequence = (1, 1)
@@ -124,8 +132,9 @@ class IMUMotionController:
 
 
 def rospy_main():
-    equalizer = Equalizer("./equalizer_config.yaml")
-    imu_motion_controller = IMUMotionController(equalizer=equalizer)
+    equalizer = Equalizer("./configs/equalizer_config.yaml")
+    recorder = Recorder("./configs/recorder_config.yaml")
+    imu_motion_controller = IMUMotionController(equalizer=equalizer, recorder=recorder)
     imu_motion_controller.do_equalization = True
     try:
         imu_motion_controller.run()

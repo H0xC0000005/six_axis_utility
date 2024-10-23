@@ -17,6 +17,7 @@ Roll:
   filterMode: 
     mode: EMA
     alpha: 0.4
+  gain: 1.2
 Sway:
   k: 6
   filterMode: 
@@ -38,7 +39,7 @@ Heave:
   filterMode: 
     mode: EMA
     alpha: 0.4
-  gain: 1.0
+  gain: 0.8
   clampThreshold: 0.5
   DynamicRangeCompressor:
   # TODO: add bias

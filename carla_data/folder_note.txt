@@ -1,0 +1,2 @@
+this folder is for recording carla data.
+by default should not be pushed onto github

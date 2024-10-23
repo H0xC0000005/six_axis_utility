@@ -4,6 +4,7 @@ All signal processing utilities witch only refines data without changing its sha
 Including low-pass filters, compression, etc.
 """
 
+from collections import deque
 from matplotlib import pyplot as plt
 import numpy as np
 from scipy.signal import butter, lfilter, wiener
@@ -230,8 +231,9 @@ class DynamicRangeCompressor:
         self.bias = bias
         self.reset()
 
-    def compress(self, signal_value: float | np.ndarray) -> float:
-        if not isinstance(signal_value, float | int):
+    def compress(self, signal_value) -> float:
+        # if not isinstance(signal_value, float | int):
+        if not isinstance(signal_value, float) and not isinstance(signal_value, int):
             # if not a float or int, assume that it is a container and just get the latest one
             signal_value = signal_value[-1]
         """
@@ -333,6 +335,41 @@ def test_dynamic_range_compressor():
     plt.show()
 
 
+def test_EMA_filter():
+    # Parameters for the sine wave
+    sample_rate = 1000  # Samples per second
+    duration = 2  # Duration in seconds
+    frequency = 5  # Frequency of the sine wave in Hz
+    time = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    sine_wave = np.sin(2 * np.pi * frequency * time)
+
+    # Add noise and spikes to the sine wave
+    noise = np.random.normal(0, 0.1, sine_wave.shape)  # Gaussian noise
+    spikes = np.zeros_like(sine_wave)
+    spike_indices = np.random.choice(len(sine_wave), size=10, replace=False)
+    spikes[spike_indices] = np.random.uniform(-1, 1, size=10)  # Random spikes
+    noisy_sine_wave = sine_wave + noise + spikes
+
+    k = 6
+    deq = deque(maxlen=k)
+    result = []
+    for elem in noisy_sine_wave:
+        deq.append(elem)
+        result.append(apply_EMA_lastvalue(deq, 0.3))
+    result = np.array(result)
+    # Plot the original and compressed sine wave
+    plt.figure(figsize=(12, 6))
+    plt.plot(time, noisy_sine_wave, label="original Signal", linewidth=1, linestyle="-")
+    plt.plot(time, result, label="filtered Signal", linewidth=1, linestyle="-")
+
+    plt.xlabel("Time (s)")
+    plt.ylabel("Amplitude")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+
 # Test the DynamicRangeCompressor with a sine wave
 if __name__ == "__main__":
-    test_dynamic_range_compressor()
+    # test_dynamic_range_compressor()
+    test_EMA_filter()

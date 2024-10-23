@@ -27,7 +27,7 @@ def convert_carla_imu_message_to_dict(msg) -> dict[str, float]:
         result[YAW_NAME] = yaw
         result[PITCH_NAME] = pitch
         result[ROLL_NAME] = roll
-        result[TIMESTAMP_NAME] = msg.timestamp
+        result[TIMESTAMP_NAME] = msg.header.stamp.to_sec()
         return result
     except ValueError | Exception as e:
         print(e)
