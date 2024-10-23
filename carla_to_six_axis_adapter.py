@@ -19,7 +19,10 @@ from recorder import Recorder
 
 class IMUMotionController:
     def __init__(
-        self, equalizer: Equalizer | None = None, recorder: Recorder | None = None
+        self,
+        equalizer: Equalizer | None = None,
+        recorder_imu: Recorder | None = None,
+        recorder_output: Recorder | None = None,
     ):
         rospy.init_node("imu_motion_controller")
 
@@ -36,22 +39,23 @@ class IMUMotionController:
         self.equalizer = equalizer
         self.do_equalization = True
 
-        self.recorder = recorder
+        self.recorder_imu = recorder_imu
+        self.recorder_output = recorder_output
 
     def imu_callback(self, msg):
 
         # Process IMU data
         result_dict = convert_carla_imu_message_to_dict(msg)
+        if self.recorder_imu is not None:
+            self.recorder_imu.update_record()
         self.pack_imu_to_six_axis_value(result_dict)
         if self.do_equalization and self.equalizer is not None:
             result_dict = self.equalizer.equalize_pipeline(result_dict)
         # self.multiply_imu(result_dict, (1, 0.1))
-
         result = CustomGamePack.from_dict(result_dict)
         result.GameStatus = GameStatus.GameStart
-
-        if self.recorder is not None:
-            self.recorder.update_record(result_dict)
+        if self.recorder_output is not None:
+            self.recorder_output.update_record(result_dict)
 
         # Send telemetry to six axis platform
         send_pack(self.udp_client, self.end_point, result)
@@ -60,7 +64,10 @@ class IMUMotionController:
         rospy.spin()
 
     def stop(self):
-        self.recorder.to_csv(f"./carla_data/carla_record_{time.time_ns}.csv")
+        if self.recorder_imu is not None:
+            self.recorder_imu.to_csv(f"./carla_data/imu_{time.time_ns}.csv")
+        if self.recorder_output is not None:
+            self.recorder_output.to_csv(f"./carla_data/output_{time.time_ns}.csv")
 
     def multiply_imu(
         self, pack_dict: dict[str, float], multipliers: float | Sequence = (1, 1)
@@ -133,8 +140,11 @@ class IMUMotionController:
 
 def rospy_main():
     equalizer = Equalizer("./configs/equalizer_config.yaml")
-    recorder = Recorder("./configs/recorder_config.yaml")
-    imu_motion_controller = IMUMotionController(equalizer=equalizer, recorder=recorder)
+    recorder_imu = Recorder("./configs/recorder_config.yaml")
+    recorder_output = Recorder("./configs/recorder_config.yaml")
+    imu_motion_controller = IMUMotionController(
+        equalizer=equalizer, recorder_imu=recorder_imu, recorder_output=recorder_output
+    )
     imu_motion_controller.do_equalization = True
     try:
         imu_motion_controller.run()

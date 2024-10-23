@@ -30,7 +30,7 @@ class Equalizer:
         """
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
-        k_yaw = config["Yaw"]["k"]
+        k_yaw = config[YAW_NAME]["k"]
 
         # self.prev_velocities_yaw = deque(maxlen=k_yaw - 1)
         # self.prev_accelerations_yaw = deque(maxlen=k_yaw - 2)
