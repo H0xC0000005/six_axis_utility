@@ -83,7 +83,10 @@ class Equalizer:
         if the config is missing, by default it is in the output.
         """
         cur_dim_config = self.config[dim_name]
-        if ENABLE_DIM_NAME not in cur_dim_config or self.config[dim_name] == True:
+        if (
+            ENABLE_DIM_NAME not in cur_dim_config
+            or self.config[dim_name][ENABLE_DIM_NAME] == True
+        ):
             return True
         else:
             return False
@@ -125,14 +128,16 @@ class Equalizer:
                 smoothed_velocities = savgol_filter(
                     self.prev_velocities_yaw,
                     window_length=min(len(self.prev_velocities_yaw), 10),
-                    polyorder=min(len(self.prev_velocities_yaw), 2) - 1,
+                    polyorder=min(len(self.prev_velocities_yaw), 3) - 1,
                 )
                 # TODO: extend the acceleration window, not just using the last two velocities
                 # TODO: add timestamp support in data passing
                 # UPDATE: compute acceleration directly from positions
-                acceleration = (smoothed_velocities[-1] - smoothed_velocities[-2]) / (
-                    (self.prev_timesteps[-1] - self.prev_timesteps[-3]) / 2
-                )
+                pivot = min(len(self.prev_velocities_yaw) // 2, 5)
+                acceleration = (
+                    sum(smoothed_velocities[-pivot:])
+                    - sum(smoothed_velocities[-2 * pivot : pivot])
+                ) / (((self.prev_timesteps[-1]) - self.prev_timesteps[-2 * pivot]) / 2)
                 # acceleration = (
                 #     self.prev_velocities_yaw[-1] - self.prev_velocities_yaw[-2]
                 # ) / ((self.prev_timesteps[-1] - self.prev_timesteps[-3]) / 2)
@@ -352,18 +357,20 @@ test functions
 
 
 def prepare_test_data():
-
-    # Load the CSV file
     file_path = "./exploration/imu_data_2.csv"
+    df = pd.read_csv(file_path)
+    return df
+
+
+def prepare_recorded_data():
+    file_path = "exploration/imu_1729673492.0006297.csv"
     df = pd.read_csv(file_path)
     return df
 
 
 def test_equalizer_console():
 
-    eq = Equalizer(
-        "D:\\repos\\carla side code\\six_axis_utility\\equalizer_config.yaml"
-    )
+    eq = Equalizer("./configs/equalizer_config.yaml")
 
     def generate_test_data() -> dict[str, float]:
         cur_val = random.random()
@@ -381,26 +388,27 @@ def test_equalizer_console():
 
 
 def test_equalizer_plot():
-    equalizer = Equalizer(
-        "D:\\repos\\carla side code\\six_axis_utility\\equalizer_config.yaml"
-    )
+    equalizer = Equalizer("./configs/equalizer_config.yaml")
     # Simulated real-time signal input
     time = np.linspace(0, 1, 1000)
     # original_signal = np.sin(2 * np.pi * 5 * time) * 0.8 + np.random.randn(1000) * 0.05
     # original_signal[100:150] += 0.5  # Adding a sudden peak for testing
     # original_signal[200:250] -= 0.5  # Adding a sudden negative peak for testing
     # original_signal = np.sin(2 * np.pi * 5 * time) * 0.8 + np.random.randn(1000) * 0.01
-    df = prepare_test_data()
-    yaw, pitch, roll = quaternion_to_euler(
-        [
-            df["orientation_x"],
-            df["orientation_y"],
-            df["orientation_z"],
-            df["orientation_w"],
-        ]
-    )
-    # original_signal = yaw
-    original_signal = df["linear_acceleration_z"]
+    # df = prepare_test_data()
+    # yaw, pitch, roll = quaternion_to_euler(
+    #     [
+    #         df["orientation_x"],
+    #         df["orientation_y"],
+    #         df["orientation_z"],
+    #         df["orientation_w"],
+    #     ]
+    # )
+    df = prepare_recorded_data()
+
+    # original_signal = roll
+    # original_signal = df["linear_acceleration_z"]
+    original_signal = df[HEAVE_NAME]
 
     # Process each value in the signal one at a time
     compressed_signal = {
@@ -408,7 +416,7 @@ def test_equalizer_plot():
     }
     for i in range(len(original_signal)):
         cur_data = {dim_name: original_signal[i] for dim_name in Equalizer.dim_names}
-        cur_data[TIMESTAMP_NAME] = df["timestamp"][i]
+        cur_data[TIMESTAMP_NAME] = df[TIMESTAMP_NAME][i]
         cur_result = equalizer.equalize_pipeline(cur_data)
         for dim_name in Equalizer.dim_names:
             compressed_signal[dim_name][i] = cur_result[dim_name]
@@ -418,9 +426,9 @@ def test_equalizer_plot():
     # Plot the result
     plt.figure(figsize=(12, 6))
     # plt.plot(time, original_signal, label="Original Signal")
-    plt.plot(df["timestamp"], original_signal, label="Original Signal")
+    plt.plot(df[TIMESTAMP_NAME], original_signal, label="Original Signal")
     plt.plot(
-        df["timestamp"],
+        df[TIMESTAMP_NAME],
         compressed_signal[dim_to_test],
         label=f"Compressed Signal: {dim_to_test}",
         linewidth=1,

@@ -47,7 +47,7 @@ class IMUMotionController:
         # Process IMU data
         result_dict = convert_carla_imu_message_to_dict(msg)
         if self.recorder_imu is not None:
-            self.recorder_imu.update_record()
+            self.recorder_imu.update_record(result_dict)
         self.pack_imu_to_six_axis_value(result_dict)
         if self.do_equalization and self.equalizer is not None:
             result_dict = self.equalizer.equalize_pipeline(result_dict)
@@ -119,23 +119,23 @@ class IMUMotionController:
             HEAVE_NAME: 1.0,
             SWAY_NAME: 4.0,
         }
+        # these values are by observation
+        imu_ranges = {
+            ROLL_NAME: math.pi / 2,
+            YAW_NAME: math.pi,
+            PITCH_NAME: math.pi / 2,
+            SURGE_NAME: 60,
+            HEAVE_NAME: 50,
+            SWAY_NAME: 30,
+        }
         sign = 1
         if dim_name in (PITCH_NAME, ROLL_NAME):
             sign = -1
-
-        return reading / (math.pi / 2) * ranges[dim_name] * sign
+        return reading / imu_ranges[dim_name] * ranges[dim_name] * sign
 
     def pack_imu_to_six_axis_value(self, pack_dict: dict[str, float]) -> None:
-        pack_dict[YAW_NAME] = self.imu_to_six_axis_value(YAW_NAME, pack_dict[YAW_NAME])
-        pack_dict[PITCH_NAME] = self.imu_to_six_axis_value(
-            YAW_NAME, pack_dict[PITCH_NAME]
-        )
-        pack_dict[ROLL_NAME] = self.imu_to_six_axis_value(
-            ROLL_NAME, pack_dict[ROLL_NAME]
-        )
-        """
-        TODO: also normalize accelerations. need to know about the value range of it
-        """
+        for dim in (YAW_NAME, PITCH_NAME, ROLL_NAME, SWAY_NAME, SURGE_NAME, HEAVE_NAME):
+            pack_dict[dim] = self.imu_to_six_axis_value(dim, pack_dict[dim])
 
 
 def rospy_main():
