@@ -1,4 +1,4 @@
-timestamp,orientation_x,orientation_y,orientation_z,orientation_w,angular_velocity_x,angular_velocity_y,angular_velocity_z,linear_acceleration_x,linear_acceleration_y,linear_acceleration_z
+Timestamp,orientation_x,orientation_y,orientation_z,orientation_w,Roll,Pitch,Yaw,Surge,Sway,Heave
 1729480238.3540566,0.0,0.0,-0.7081007084118516,0.7061114549039932,0.0,0.0,0.0,0.0,0.0,9.810001373291016
 1729480238.371202,0.0,0.0,-0.7081007084118516,0.7061114549039932,0.0,0.0,0.0,0.159943088889122,0.020450055599212646,9.809999465942383
 1729480238.387014,0.0,0.0,-0.7081007084118516,0.7061114549039932,0.0,0.0,0.0,-5.626678466796875e-05,0.019999919459223747,9.8100004196167

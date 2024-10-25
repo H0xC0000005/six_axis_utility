@@ -23,6 +23,58 @@ from filters import *
 class Equalizer:
     dim_names = (YAW_NAME, PITCH_NAME, ROLL_NAME, SWAY_NAME, SURGE_NAME, HEAVE_NAME)
 
+    def _init_yaw_gamma_filter(self):
+        # Initialize Alpha-Beta-Gamma filter parameters if not already done
+        if not hasattr(self, "alpha_beta_gamma_state"):
+            # State: [position, velocity, acceleration]
+            self.alpha_beta_gamma_state = np.array([0.0, 0.0, 0.0])
+            self.alpha = 0.85  # Alpha: Position update weight
+            self.beta = 0.005  # Beta: Velocity update weight
+            self.gamma = 0.0001  # Gamma: Acceleration update weight
+            self.prev_time = None
+
+    def _init_yaw_kalman_filter(self):
+        # Initialize Kalman Filter if not already done
+        # Initialize Kalman Filter if not already done
+        if not hasattr(self, "kalman_filter"):
+            # 1D Constant Jerk Model (position, velocity, acceleration, jerk)
+            self.kalman_filter = KalmanFilter(dim_x=4, dim_z=1)
+            dt = 1.0  # Initial time step estimate (this will vary later)
+
+            # State transition matrix (position, velocity, acceleration, jerk)
+            self.kalman_filter.F = np.array(
+                [
+                    [1, dt, 0.5 * dt**2, (1 / 6) * dt**3],
+                    [0, 1, dt, 0.5 * dt**2],
+                    [0, 0, 1, dt],
+                    [0, 0, 0, 1],
+                ]
+            )
+
+            # Measurement function (we only measure position)
+            self.kalman_filter.H = np.array([[1, 0, 0, 0]])
+
+            # Initial covariance matrix
+            self.kalman_filter.P *= 1000.0
+
+            # Process uncertainty - Increased to be more responsive for acceleration and jerk
+            self.kalman_filter.Q = (
+                np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 5, 0], [0, 0, 0, 10]])
+                * 0.1
+            )
+
+            # Measurement uncertainty
+            self.kalman_filter.R = np.array(
+                [[1]]
+            )  # Lowered measurement noise to trust the sensor more
+
+            # Initial state (position, velocity, acceleration, jerk)
+            self.kalman_filter.x = np.array([[0], [0], [0], [0]])
+        else:
+            print(
+                f"WARNING: attempt to initialize yaw kalman filter but it already presents. return without any operation"
+            )
+
     def __init__(self, config_path: str):
         """
         Args:
@@ -34,12 +86,14 @@ class Equalizer:
 
         # self.prev_velocities_yaw = deque(maxlen=k_yaw - 1)
         # self.prev_accelerations_yaw = deque(maxlen=k_yaw - 2)
-        self.prev_velocities_yaw = deque(maxlen=k_yaw + 1)
+        # self.prev_velocities_yaw = deque(maxlen=k_yaw + 1)
         self.prev_positions_yaw = deque(maxlen=k_yaw + 2)
+        self._init_yaw_gamma_filter()
+        self._init_yaw_kalman_filter()
         self.compressors = {}
         self.prev_dim_values = {}
         self.clamp_thresholds = {}
-        max_k = -1
+        max_k = k_yaw + 2
         for dim_name in self.dim_names:
             # process k and deque
             cur_k = config[dim_name]["k"]
@@ -114,33 +168,37 @@ class Equalizer:
         if not self.is_dim_enabled(YAW_NAME):
             return 0
         acceleration = 0
-        if (
-            len(self.prev_positions_yaw) > 2
-        ):  # only compute accel if we have 3+ positions, and vel if 2+
-            delta = self.prev_timesteps[-1] - self.prev_timesteps[-2]
-            # assume that yaw is in radian. retrieve
-            cur_yaw_velocity = (
-                self.prev_positions_yaw[-1] - self.prev_positions_yaw[-2]
-            ) / delta
-            self.prev_velocities_yaw.append((cur_yaw_velocity))
-            if len(self.prev_positions_yaw) > 3:
-                # apply a savgol filter to velocity before computing acceleration
-                smoothed_velocities = savgol_filter(
-                    self.prev_velocities_yaw,
-                    window_length=min(len(self.prev_velocities_yaw), 10),
-                    polyorder=min(len(self.prev_velocities_yaw), 3) - 1,
+        # Update the time step based on the most recent timestamps
+        if len(self.prev_timesteps) >= 2:
+            dt = self.prev_timesteps[-1] - self.prev_timesteps[-2]
+
+            # Update state transition matrix with the new time step
+            self.kalman_filter.F = np.array(
+                [
+                    [1, dt, 0.5 * dt**2, (1 / 6) * dt**3],
+                    [0, 1, dt, 0.5 * dt**2],
+                    [0, 0, 1, dt],
+                    [0, 0, 0, 1],
+                ]
+            )
+
+            # Adaptive tuning for process noise based on time step
+            self.kalman_filter.Q = (
+                np.array(
+                    [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 5 * dt, 0], [0, 0, 0, 10 * dt]]
                 )
-                # TODO: extend the acceleration window, not just using the last two velocities
-                # TODO: add timestamp support in data passing
-                # UPDATE: compute acceleration directly from positions
-                pivot = min(len(self.prev_velocities_yaw) // 2, 5)
-                acceleration = (
-                    sum(smoothed_velocities[-pivot:])
-                    - sum(smoothed_velocities[-2 * pivot : pivot])
-                ) / (((self.prev_timesteps[-1]) - self.prev_timesteps[-2 * pivot]) / 2)
-                # acceleration = (
-                #     self.prev_velocities_yaw[-1] - self.prev_velocities_yaw[-2]
-                # ) / ((self.prev_timesteps[-1] - self.prev_timesteps[-3]) / 2)
+                * 0.1
+            )
+
+        # Get the most recent position
+        latest_position = self.prev_positions_yaw[-1]
+
+        # Kalman filter prediction and update
+        self.kalman_filter.predict()
+        self.kalman_filter.update(latest_position)
+
+        # The estimated acceleration is the third element in the state vector
+        acceleration = self.kalman_filter.x[2, 0]
         return acceleration
 
     def clamp_value_dim(
@@ -203,7 +261,7 @@ class Equalizer:
         self.prev_timesteps.append(values_dict[TIMESTAMP_NAME])
 
     def normalize_dim(
-        self, dim_name: str, *, value: float | None = None, inplace: bool = False
+        self, dim_name: str, *, value=None, inplace: bool = False
     ) -> float:
         """
         produce the normalized value for the latest timestep (for control)
@@ -346,7 +404,7 @@ class Equalizer:
         # result = self.normalize(values=result, inplace=False)
         result = self.normalize(values=None, inplace=False)
         # apply clamp after all processing and before gain
-        result = self.clamp_last_values(inplace=True)
+        result = self.clamp_last_values(values=result, inplace=False)
         self.apply_gain(result)
         return result
 
@@ -357,7 +415,7 @@ test functions
 
 
 def prepare_test_data():
-    file_path = "./exploration/imu_data_2.csv"
+    file_path = "./exploration/imu_data_1.csv"
     df = pd.read_csv(file_path)
     return df
 
@@ -406,9 +464,10 @@ def test_equalizer_plot():
     # )
     df = prepare_recorded_data()
 
-    # original_signal = roll
+    dim_to_test = HEAVE_NAME
+    # original_signal = yaw
     # original_signal = df["linear_acceleration_z"]
-    original_signal = df[HEAVE_NAME]
+    original_signal = df[dim_to_test]
 
     # Process each value in the signal one at a time
     compressed_signal = {
@@ -422,7 +481,6 @@ def test_equalizer_plot():
             compressed_signal[dim_name][i] = cur_result[dim_name]
             pass
 
-    dim_to_test = HEAVE_NAME
     # Plot the result
     plt.figure(figsize=(12, 6))
     # plt.plot(time, original_signal, label="Original Signal")
@@ -430,7 +488,7 @@ def test_equalizer_plot():
     plt.plot(
         df[TIMESTAMP_NAME],
         compressed_signal[dim_to_test],
-        label=f"Compressed Signal: {dim_to_test}",
+        label=f"Processed Signal: {dim_to_test}",
         linewidth=1,
     )
     plt.xlabel("Time")

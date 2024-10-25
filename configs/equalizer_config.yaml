@@ -6,7 +6,7 @@ Yaw:
   filterMode: 
     mode: EMA 
     alpha: 0.3
-  enable: false
+  enable: true
 Pitch:
   k: 6
   filterMode: 
