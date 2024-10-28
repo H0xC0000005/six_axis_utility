@@ -12,7 +12,7 @@ import pandas as pd
 import yaml
 import random
 
-from scipy.signal import savgol_filter
+# from scipy.signal import savgol_filter
 
 from constants import *
 from hyperparams import *
@@ -129,6 +129,12 @@ class Equalizer:
             pass
 
         self.prev_timesteps = deque(maxlen=max_k)
+
+        self.apply_collision = config[APPLYCOLLISIONNAME]
+        # count collision and do not apply filtering / apply very low filtering in this window
+        self.collision_residule_frames = 0
+        self.collision_impulse = 0
+
         self.config = config
 
     def is_dim_enabled(self, dim_name: str):
@@ -246,11 +252,35 @@ class Equalizer:
             self.prev_dim_values[dim_name][-1] = value
         return value
 
-    def clamp_last_values(
+    def clamp_last_values_changes(
         self,
         *,
         values: dict[str, float] | None = None,
         inplace: bool = True,
+    ):
+        result = {}
+        for dim in self.dim_names:
+            cur_value = None if values is None else values[dim]
+            result[dim] = self.clamp_value_dim(dim, value=cur_value, inplace=inplace)
+        return result
+
+    def clamp_last_values_to_six_axis_limit_dim(
+        self,
+        dim_name: str,
+        *,
+        value: float | None = None,
+        inplace: bool = False,
+    ):
+        if value is None:
+            value = self.prev_dim_values[dim_name][-1]
+        value = min(SIX_AXIS_RANGES[dim_name], value)
+        value = max(-SIX_AXIS_RANGES[dim_name], value)
+        if inplace:
+            self.prev_dim_values[dim_name][-1] = value
+        return value
+
+    def clamp_last_values_to_six_axis_limit(
+        self, *, values: dict[str, float] | None = None, inplace: bool = False
     ):
         result = {}
         for dim in self.dim_names:
@@ -400,6 +430,21 @@ class Equalizer:
             self.prev_dim_values[dim_name][-1] = ret
         return ret
 
+    def register_collision_frame(self):
+        self.collision_residule_frames += 1
+
+    def apply_collision_to_heave(self, heave_value: float) -> float:
+        increment = SIX_AXIS_RANGES[HEAVE_NAME] * 0.15
+        max_ratio = 0.6
+        if self.collision_residule_frames > 0:
+            cur_limit = SIX_AXIS_RANGES[HEAVE_NAME] * max_ratio
+            self.collision_impulse = min(self.collision_impulse + increment, cur_limit)
+            self.collision_residule_frames -= 1
+        elif self.collision_impulse > 0:
+            self.collision_impulse = max(0, self.collision_impulse - increment)
+
+        return heave_value + self.collision_impulse
+
     def equalize_pipeline_from_carla_imu(self, msg):
         try:
             latest_values_dict = convert_carla_imu_message_to_dict(msg)
@@ -420,7 +465,11 @@ class Equalizer:
         # result = self.normalize(values=result, inplace=False)
         result = self.normalize(values=None, inplace=False)
         # apply clamp after all processing and before gain
-        result = self.clamp_last_values(values=result, inplace=False)
+        result = self.clamp_last_values_changes(values=result, inplace=False)
+        # first clamp changes, then apply collision. collision may have large jumps
+        if self.apply_collision:
+            result[HEAVE_NAME] = self.apply_collision_to_heave(result[HEAVE_NAME])
+        result = self.clamp_last_values_to_six_axis_limit(values=result, inplace=False)
         self.apply_gain(result)
         return result
 
@@ -431,13 +480,15 @@ test functions
 
 
 def prepare_test_data():
-    file_path = "./exploration/imu_data_2.csv"
+    # file_path = "./exploration/imu_data_2.csv"
+    file_path = "./exploration/imu_data_collision_1.csv"
     df = pd.read_csv(file_path)
     return df
 
 
 def prepare_recorded_data():
-    file_path = "exploration/imu_1729673492.0006297.csv"
+    file_path = "exploration/imu_record1.csv"
+    # file_path = "./exploration/imu_data_2.csv"
     df = pd.read_csv(file_path)
     return df
 
@@ -469,21 +520,21 @@ def test_equalizer_plot():
     # original_signal[100:150] += 0.5  # Adding a sudden peak for testing
     # original_signal[200:250] -= 0.5  # Adding a sudden negative peak for testing
     # original_signal = np.sin(2 * np.pi * 5 * time) * 0.8 + np.random.randn(1000) * 0.01
-    df = prepare_test_data()
-    yaw, pitch, roll = quaternion_to_euler(
-        [
-            df["orientation_x"],
-            df["orientation_y"],
-            df["orientation_z"],
-            df["orientation_w"],
-        ]
-    )
-    # df = prepare_recorded_data()
+    # df = prepare_test_data()
+    # yaw, pitch, roll = quaternion_to_euler(
+    #     [
+    #         df["orientation_x"],
+    #         df["orientation_y"],
+    #         df["orientation_z"],
+    #         df["orientation_w"],
+    #     ]
+    # )
+    df = prepare_recorded_data()
 
-    dim_to_test = YAW_NAME
-    original_signal = yaw
+    dim_to_test = SURGE_NAME
+    # original_signal = yaw
     # original_signal = df["linear_acceleration_z"]
-    # original_signal = df[dim_to_test]
+    original_signal = df[dim_to_test]
 
     # Process each value in the signal one at a time
     compressed_signal = {
@@ -492,6 +543,8 @@ def test_equalizer_plot():
     for i in range(len(original_signal)):
         cur_data = {dim_name: original_signal[i] for dim_name in Equalizer.dim_names}
         cur_data[TIMESTAMP_NAME] = df[TIMESTAMP_NAME][i]
+        if "is_colliding" in df.columns and df["is_colliding"][i]:
+            equalizer.register_collision_frame()
         cur_result = equalizer.equalize_pipeline(cur_data)
         for dim_name in Equalizer.dim_names:
             compressed_signal[dim_name][i] = cur_result[dim_name]

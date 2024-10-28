@@ -5,7 +5,7 @@ try:
     from sensor_msgs.msg import Imu
     from geometry_msgs.msg import Vector3
 except ImportError:
-    print(f"!!!ARNING: rospy or sensor_msgs not available.")
+    print(f"!!!WARNING: rospy or sensor_msgs not available.")
 import time
 import math
 import socket
@@ -67,6 +67,7 @@ class IMUMotionController:
     def collision_callback(self, msg):
         print("Collision detected:")
         print("Force - x: %f, y: %f, z: %f", msg.x, msg.y, msg.z)
+        self.equalizer.register_collision_frame()
 
     def run(self):
         rospy.spin()
@@ -118,28 +119,10 @@ class IMUMotionController:
         convert imu reading from Unreal to six axis orientation parameter range. assume that imu reading is in radian
         and six axis orientation is in range [-k, k].
         """
-        # hardcoded config, according to the manufacturer
-        ranges = {
-            ROLL_NAME: 20.0,
-            YAW_NAME: 2.0,
-            PITCH_NAME: 20.0,
-            SURGE_NAME: 6.0,
-            HEAVE_NAME: 1.0,
-            SWAY_NAME: 4.0,
-        }
-        # these values are by observation
-        imu_ranges = {
-            ROLL_NAME: math.pi / 2,
-            YAW_NAME: math.pi,
-            PITCH_NAME: math.pi / 2,
-            SURGE_NAME: 60,
-            HEAVE_NAME: 50,
-            SWAY_NAME: 30,
-        }
         sign = 1
         if dim_name in (PITCH_NAME, ROLL_NAME):
             sign = -1
-        return reading / imu_ranges[dim_name] * ranges[dim_name] * sign
+        return reading / IMU_RANGES[dim_name] * SIX_AXIS_RANGES[dim_name] * sign
 
     def pack_imu_to_six_axis_value(self, pack_dict: dict[str, float]) -> None:
         for dim in (YAW_NAME, PITCH_NAME, ROLL_NAME, SWAY_NAME, SURGE_NAME, HEAVE_NAME):

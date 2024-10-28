@@ -1,6 +1,10 @@
+import math
+
 """
-name of each axis for six axis platform
+six axis platform interface and options
 """
+
+APPLYCOLLISIONNAME = "applyCollision"
 
 YAW_NAME = "Yaw"
 PITCH_NAME = "Pitch"
@@ -10,6 +14,26 @@ SURGE_NAME = "Surge"
 HEAVE_NAME = "Heave"
 
 TIMESTAMP_NAME = "Timestamp"
+
+# hardcoded config, according to the manufacturer
+SIX_AXIS_RANGES = {
+    ROLL_NAME: 20.0,
+    YAW_NAME: 2.0,
+    PITCH_NAME: 20.0,
+    SURGE_NAME: 6.0,
+    HEAVE_NAME: 1.0,
+    SWAY_NAME: 4.0,
+}
+# these values are by observation
+IMU_RANGES = {
+    ROLL_NAME: math.pi / 2,
+    YAW_NAME: math.pi,
+    PITCH_NAME: math.pi / 2,
+    SURGE_NAME: 60,
+    HEAVE_NAME: 50,
+    SWAY_NAME: 30,
+}
+
 
 """
 filter related constants. mostly names definition

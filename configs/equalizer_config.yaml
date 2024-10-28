@@ -1,7 +1,7 @@
-
+applyCollision: true
 # available filter modes: EMA(windowed), MA 
 Yaw:
-  k: 10
+  k: 6
   clampThreshold: 0.5
   filterMode: 
     mode: EMA 
@@ -13,6 +13,7 @@ Pitch:
     mode: EMA
     alpha: 0.3
   gain: 2
+  enable: true
 Roll: 
   k: 6
   filterMode: 
@@ -27,8 +28,8 @@ Sway:
     # noise: 0.5
     alpha: 0.3
 Surge:
-  k: 8
-  clampThreshold: 0.5
+  k: 6
+  clampThreshold: 1.1
   filterMode: 
     # mode: Butter
     # fs: 40
