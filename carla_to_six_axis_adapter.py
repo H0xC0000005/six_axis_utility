@@ -3,6 +3,7 @@ from typing import Iterable, Sequence, Sized
 try:
     import rospy
     from sensor_msgs.msg import Imu
+    from geometry_msgs.msg import Vector3
 except ImportError:
     print(f"!!!ARNING: rospy or sensor_msgs not available.")
 import time
@@ -27,6 +28,9 @@ class IMUMotionController:
         rospy.init_node("imu_motion_controller")
 
         self.subscription = rospy.Subscriber("/imu/imu", Imu, self.imu_callback)
+        self.collision_subscription = rospy.Subscriber(
+            "/collision_detector", Vector3, self.collision_callback
+        )
 
         self.control_sender = ControlSender()
 
@@ -59,6 +63,10 @@ class IMUMotionController:
 
         # Send telemetry to six axis platform
         send_pack(self.udp_client, self.end_point, result)
+
+    def collision_callback(self, msg):
+        print("Collision detected:")
+        print("Force - x: %f, y: %f, z: %f", msg.x, msg.y, msg.z)
 
     def run(self):
         rospy.spin()
