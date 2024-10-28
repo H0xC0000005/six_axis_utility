@@ -65,9 +65,9 @@ class IMUMotionController:
 
     def stop(self):
         if self.recorder_imu is not None:
-            self.recorder_imu.to_csv(f"./carla_data/imu_{time.time_ns}.csv")
+            self.recorder_imu.to_csv(f"./carla_data/imu_{time.time()}.csv")
         if self.recorder_output is not None:
-            self.recorder_output.to_csv(f"./carla_data/output_{time.time_ns}.csv")
+            self.recorder_output.to_csv(f"./carla_data/output_{time.time()}.csv")
 
     def multiply_imu(
         self, pack_dict: dict[str, float], multipliers: float | Sequence = (1, 1)

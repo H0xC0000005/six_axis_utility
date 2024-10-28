@@ -168,6 +168,22 @@ class Equalizer:
         if not self.is_dim_enabled(YAW_NAME):
             return 0
         acceleration = 0
+        # if len(self.prev_positions_yaw) >= 2:
+        #     unwrapped_yaw = np.unwrap(
+        #         self.prev_positions_yaw,
+        #         period=2 * np.pi,
+        #         discont=np.pi,
+        #     ).tolist()
+        if len(self.prev_positions_yaw) >= 3:
+            # Unwrap the last three positions to provide better context
+            latest_unwrapped_yaw = np.unwrap(
+                [
+                    self.prev_positions_yaw[-3],
+                    self.prev_positions_yaw[-2],
+                    self.prev_positions_yaw[-1],
+                ]
+            )[-1]
+            self.prev_positions_yaw[-1] = latest_unwrapped_yaw
         # Update the time step based on the most recent timestamps
         if len(self.prev_timesteps) >= 2:
             dt = self.prev_timesteps[-1] - self.prev_timesteps[-2]
@@ -415,7 +431,7 @@ test functions
 
 
 def prepare_test_data():
-    file_path = "./exploration/imu_data_1.csv"
+    file_path = "./exploration/imu_data_2.csv"
     df = pd.read_csv(file_path)
     return df
 
@@ -453,21 +469,21 @@ def test_equalizer_plot():
     # original_signal[100:150] += 0.5  # Adding a sudden peak for testing
     # original_signal[200:250] -= 0.5  # Adding a sudden negative peak for testing
     # original_signal = np.sin(2 * np.pi * 5 * time) * 0.8 + np.random.randn(1000) * 0.01
-    # df = prepare_test_data()
-    # yaw, pitch, roll = quaternion_to_euler(
-    #     [
-    #         df["orientation_x"],
-    #         df["orientation_y"],
-    #         df["orientation_z"],
-    #         df["orientation_w"],
-    #     ]
-    # )
-    df = prepare_recorded_data()
+    df = prepare_test_data()
+    yaw, pitch, roll = quaternion_to_euler(
+        [
+            df["orientation_x"],
+            df["orientation_y"],
+            df["orientation_z"],
+            df["orientation_w"],
+        ]
+    )
+    # df = prepare_recorded_data()
 
-    dim_to_test = HEAVE_NAME
-    # original_signal = yaw
+    dim_to_test = YAW_NAME
+    original_signal = yaw
     # original_signal = df["linear_acceleration_z"]
-    original_signal = df[dim_to_test]
+    # original_signal = df[dim_to_test]
 
     # Process each value in the signal one at a time
     compressed_signal = {
