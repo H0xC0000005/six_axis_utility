@@ -433,17 +433,36 @@ class Equalizer:
     def register_collision_frame(self):
         self.collision_residule_frames += 1
 
-    def apply_collision_to_heave(self, heave_value: float) -> float:
-        increment = SIX_AXIS_RANGES[HEAVE_NAME] * 0.15
+    def apply_collision_to_surge(self, surge_value: float) -> float:
+        """
+        deprecated at this time.
+        seems like the six axis platform will filter out sudden changes in acceleration
+        so it's difficult to simulate sudden changes
+        """
+        increment = SIX_AXIS_RANGES[SURGE_NAME] * 0.15
         max_ratio = 0.6
         if self.collision_residule_frames > 0:
-            cur_limit = SIX_AXIS_RANGES[HEAVE_NAME] * max_ratio
-            self.collision_impulse = min(self.collision_impulse + increment, cur_limit)
+            cur_limit = SIX_AXIS_RANGES[SURGE_NAME] * max_ratio
+            self.collision_impulse = min(self.collision_impulse - increment * 1, 0)
+            self.collision_residule_frames -= 1
+        elif self.collision_impulse < 0:
+            self.collision_impulse = max(-cur_limit, self.collision_impulse + increment)
+
+        return surge_value + self.collision_impulse
+
+    def apply_collision_to_pitch(self, pitch_value: float) -> float:
+        increment = SIX_AXIS_RANGES[PITCH_NAME] * 0.05
+        max_ratio = 0.4
+        if self.collision_residule_frames > 0:
+            cur_limit = SIX_AXIS_RANGES[PITCH_NAME] * max_ratio
+            self.collision_impulse = min(
+                self.collision_impulse + increment * 1, cur_limit
+            )
             self.collision_residule_frames -= 1
         elif self.collision_impulse > 0:
             self.collision_impulse = max(0, self.collision_impulse - increment)
 
-        return heave_value + self.collision_impulse
+        return pitch_value + self.collision_impulse
 
     def equalize_pipeline_from_carla_imu(self, msg):
         try:
@@ -468,7 +487,8 @@ class Equalizer:
         result = self.clamp_last_values_changes(values=result, inplace=False)
         # first clamp changes, then apply collision. collision may have large jumps
         if self.apply_collision:
-            result[HEAVE_NAME] = self.apply_collision_to_heave(result[HEAVE_NAME])
+            # result[SURGE_NAME] = self.apply_collision_to_surge(result[SURGE_NAME])
+            result[PITCH_NAME] = self.apply_collision_to_surge(result[PITCH_NAME])
         result = self.clamp_last_values_to_six_axis_limit(values=result, inplace=False)
         self.apply_gain(result)
         return result
