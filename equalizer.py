@@ -442,25 +442,43 @@ class Equalizer:
         increment = SIX_AXIS_RANGES[SURGE_NAME] * 0.15
         max_ratio = 0.6
         if self.collision_residule_frames > 0:
-            cur_limit = SIX_AXIS_RANGES[SURGE_NAME] * max_ratio
             self.collision_impulse = min(self.collision_impulse - increment * 1, 0)
             self.collision_residule_frames -= 1
         elif self.collision_impulse < 0:
-            self.collision_impulse = max(-cur_limit, self.collision_impulse + increment)
+            self.collision_impulse = max(
+                -SIX_AXIS_RANGES[SURGE_NAME] * max_ratio,
+                self.collision_impulse + increment,
+            )
 
         return surge_value + self.collision_impulse
 
     def apply_collision_to_pitch(self, pitch_value: float) -> float:
-        increment = SIX_AXIS_RANGES[PITCH_NAME] * 0.05
-        max_ratio = 0.4
+        increment = SIX_AXIS_RANGES[PITCH_NAME] * 0.005
+        max_ratio = 0.2
         if self.collision_residule_frames > 0:
-            cur_limit = SIX_AXIS_RANGES[PITCH_NAME] * max_ratio
-            self.collision_impulse = min(
-                self.collision_impulse + increment * 1, cur_limit
+            # change the logic to compute the acceleration of this period
+            # cur_limit = SIX_AXIS_RANGES[PITCH_NAME] * max_ratio
+            # self.collision_impulse = min(
+            #     self.collision_impulse + increment * 1, cur_limit
+            # )
+            k = 4
+            latest_acceleration = self.prev_dim_values[SURGE_NAME][-1]
+            prev_acceleration_avg = sum(self.prev_dim_values[SURGE_NAME][-k:-1]) / (
+                k - 1
+            )
+            curstep_acceleration = latest_acceleration - prev_acceleration_avg
+            self.collision_impulse = (
+                curstep_acceleration
+                / SIX_AXIS_RANGES[SURGE_NAME]
+                * SIX_AXIS_RANGES[PITCH_NAME]
+                * max_ratio
             )
             self.collision_residule_frames -= 1
-        elif self.collision_impulse > 0:
-            self.collision_impulse = max(0, self.collision_impulse - increment)
+        else:
+            if self.collision_impulse > 0:
+                self.collision_impulse = max(0, self.collision_impulse - increment)
+            else:
+                self.collision_impulse = min(0, self.collision_impulse + increment)
 
         return pitch_value + self.collision_impulse
 
