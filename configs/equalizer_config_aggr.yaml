@@ -1,0 +1,56 @@
+applyCollision: true
+# available filter modes: EMA(windowed), MA 
+Yaw:
+  k: 6
+  clampThreshold: 0.8
+  filterMode: 
+    mode: EMA 
+    alpha: 0.3
+  enable: true
+Pitch:
+  k: 5
+  filterMode: 
+    mode: EMA
+    alpha: 0.3
+  gain: 2
+  enable: true
+Roll: 
+  k: 4
+  clampThreshold: 2.0
+  filterMode: 
+    mode: EMA
+    alpha: 0.3
+  gain: 1.4
+Sway:
+  k: 6
+  clampThreshold: 0.5
+  filterMode: 
+    mode: EMA 
+    # noise: 0.5
+    alpha: 0.3
+Surge:
+  k: 4
+  clampThreshold: 1.1
+  filterMode: 
+    # mode: Butter
+    # fs: 40
+    # cutoff: 10
+    # order: 2 
+    mode: EMA
+    alpha: 0.2
+  gain: 1.1
+Heave:
+  k: 8
+  # don't use wiener. heave has a bias from gravity and wiener doesnt work
+  filterMode: 
+    mode: EMA
+    alpha: 0.4
+  gain: 1.1
+  clampThreshold: 0.5
+  DynamicRangeCompressor:
+    bias: 0
+    threshold: 2
+    ratio: 3 
+    attack: 0.3
+    release: 0.1
+    kneeWidth: 0.5

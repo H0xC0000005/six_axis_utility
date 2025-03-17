@@ -48,8 +48,10 @@ class IMUMotionController(Node):
 
         self.recorder_imu = recorder_imu
         self.recorder_output = recorder_output
+        print(f"IMU motion controller init finished.")
 
     def imu_callback(self, msg):
+        print(f">>")
         # Process IMU data
         result_dict = convert_carla_imu_message_to_dict(msg)
         if self.recorder_imu is not None:
@@ -83,6 +85,7 @@ class IMUMotionController(Node):
         and six axis orientation is in range [-k, k].
         """
         sign = 1
+        # some of the axes have opposite control direction
         if dim_name in (PITCH_NAME, ROLL_NAME):
             sign = -1
         return reading / IMU_RANGES[dim_name] * SIX_AXIS_RANGES[dim_name] * sign
@@ -104,6 +107,7 @@ def main(args=None):
         equalizer=equalizer, recorder_imu=recorder_imu, recorder_output=recorder_output
     )
     imu_motion_controller.do_equalization = True
+    print(f"ready to launch the pipeline...")
     try:
         rclpy.spin(imu_motion_controller)
     except KeyboardInterrupt:

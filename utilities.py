@@ -27,9 +27,11 @@ def convert_carla_imu_message_to_dict(msg) -> dict[str, float]:
         result[YAW_NAME] = yaw
         result[PITCH_NAME] = pitch
         result[ROLL_NAME] = roll
-        result[TIMESTAMP_NAME] = msg.header.stamp.to_sec()
+        # ROS1
+        # result[TIMESTAMP_NAME] = msg.header.stamp.to_sec()
+        result[TIMESTAMP_NAME] = msg.header.stamp.sec
         return result
-    except ValueError | Exception as e:
+    except ValueError as e:
         print(e)
         raise ValueError(
             "provided msg cannot be converted to dictionary based on IMU protocol of carla."

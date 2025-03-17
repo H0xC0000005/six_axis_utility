@@ -7,7 +7,7 @@ functions of equalizer:
 
 from collections import deque
 import time
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 import pandas as pd
 import yaml
 import random
