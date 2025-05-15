@@ -7,7 +7,7 @@ functions of equalizer:
 
 from collections import deque
 import time
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 import pandas as pd
 import yaml
 import random
@@ -431,7 +431,31 @@ class Equalizer:
         return ret
 
     def register_collision_frame(self):
-        self.collision_residule_frames += 1
+        self.collision_residule_frames += 5
+
+    # def apply_collision_to_surge(self, surge_value: float) -> float:
+    #     """
+    #     deprecated at this time.
+    #     seems like the six axis platform will filter out sudden changes in acceleration
+    #     so it's difficult to simulate sudden changes
+    #     """
+    #     increment = SIX_AXIS_RANGES[SURGE_NAME] * 0.05
+    #     max_ratio = 0.1
+    #     if self.collision_residule_frames > 0:
+    #         self.collision_residule_frames = min(2, self.collision_residule_frames)
+    #         self.collision_impulse = min(self.collision_impulse - increment * 1, 0)
+    #         self.collision_residule_frames -= 1
+    #     else: 
+    #         if self.collision_impulse < 0:
+    #             self.collision_impulse = max(
+    #                 -SIX_AXIS_RANGES[SURGE_NAME] * max_ratio,
+    #                 self.collision_impulse + increment,
+    #             )
+    #         else:
+    #             self.collision_impulse = min(0, self.collision_impulse)
+
+    #     return surge_value + self.collision_impulse
+    #     # return surge_value
 
     def apply_collision_to_surge(self, surge_value: float) -> float:
         """
@@ -439,18 +463,13 @@ class Equalizer:
         seems like the six axis platform will filter out sudden changes in acceleration
         so it's difficult to simulate sudden changes
         """
-        increment = SIX_AXIS_RANGES[SURGE_NAME] * 0.15
-        max_ratio = 0.6
         if self.collision_residule_frames > 0:
-            self.collision_impulse = min(self.collision_impulse - increment * 1, 0)
+            self.collision_residule_frames = min(10, self.collision_residule_frames)
             self.collision_residule_frames -= 1
-        elif self.collision_impulse < 0:
-            self.collision_impulse = max(
-                -SIX_AXIS_RANGES[SURGE_NAME] * max_ratio,
-                self.collision_impulse + increment,
-            )
-
-        return surge_value + self.collision_impulse
+            return surge_value + 0.8
+        else:
+            return surge_value
+        # return surge_value  
 
     def apply_collision_to_pitch(self, pitch_value: float) -> float:
         increment = SIX_AXIS_RANGES[PITCH_NAME] * 0.005
@@ -481,10 +500,11 @@ class Equalizer:
                 self.collision_impulse = min(0, self.collision_impulse + increment)
 
         return pitch_value + self.collision_impulse
+        # return pitch_value
 
     def equalize_pipeline_from_carla_imu(self, msg):
         try:
-            latest_values_dict = convert_carla_imu_message_to_dict(msg)
+            latest_values_dict = process_carla_imu_message(msg)
         except Exception as e:
             print(e)
             print(

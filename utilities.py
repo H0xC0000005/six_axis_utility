@@ -4,36 +4,56 @@ from constants import *
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-
-def convert_carla_imu_message_to_dict(msg) -> dict[str, float]:
+def get_field(obj, *fields):
     """
-    Convert a carla IMU message to a dictionary for six axles.
+    Traverse nested fields, using dict-access if obj is a dict,
+    or getattr otherwise.
+    """
+    try:
+        for fld in fields:
+            if isinstance(obj, dict):
+                obj = obj[fld]
+            else:
+                obj = getattr(obj, fld)
+    except KeyError or AttributeError as e:
+        print(obj)
+        raise e
+    return obj
+
+
+def process_carla_imu_message(msg) -> dict[str, float]:
+    """
+    Convert a carla IMU message, process it, and to a dictionary for six axles.
     This is an adapter that should be called before passing to six axles code.
     """
     g = 9.80665
-    try:
-        result = {}
-        result[SURGE_NAME] = msg.linear_acceleration.x
-        result[HEAVE_NAME] = msg.linear_acceleration.z - g
-        result[SWAY_NAME] = msg.linear_acceleration.y
+    get = get_field # alias for simplicity
+    result = {}
+    result = {}
+    # linear_acceleration.x
+    result[SURGE_NAME] = get(msg, "linear_acceleration", "x")       # :contentReference[oaicite:5]{index=5}
+    result[HEAVE_NAME] = get(msg, "linear_acceleration", "z") - g
+    result[SWAY_NAME] = get(msg, "linear_acceleration", "y")
 
-        q = [
-            msg.orientation.x,
-            msg.orientation.y,
-            msg.orientation.z,
-            msg.orientation.w,
-        ]
-        yaw, pitch, roll = quaternion_to_euler(q)
-        result[YAW_NAME] = yaw
-        result[PITCH_NAME] = pitch
-        result[ROLL_NAME] = roll
-        result[TIMESTAMP_NAME] = msg.header.stamp.to_sec()
-        return result
-    except ValueError | Exception as e:
-        print(e)
-        raise ValueError(
-            "provided msg cannot be converted to dictionary based on IMU protocol of carla."
-        )
+    # orientation → quaternion_to_euler
+    q = [
+        get(msg, "orientation", "x"),
+        get(msg, "orientation", "y"),
+        get(msg, "orientation", "z"),
+        get(msg, "orientation", "w"),
+    ]
+    yaw, pitch, roll = quaternion_to_euler(q)
+    result[YAW_NAME] = yaw
+    result[PITCH_NAME] = pitch
+    result[ROLL_NAME] = roll
+
+    # timestamp
+    try:
+        result[TIMESTAMP_NAME] = get(msg, "header", "stamp", "sec")
+    except AttributeError:
+        # it is a dict so no sec attr, use its plain timestamp
+        result[TIMESTAMP_NAME] = get(msg, "header", "stamp")
+    return result
 
 
 def quaternion_to_euler(quaternion: list | np.ndarray):
