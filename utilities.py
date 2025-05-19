@@ -1,6 +1,7 @@
 from hyperparams import *
 from constants import *
 
+import datetime
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
@@ -11,16 +12,22 @@ def get_field(obj, *fields):
     """
     try:
         for fld in fields:
-            if isinstance(obj, dict):
+            # if isinstance(obj, dict):
+            #     obj = obj[fld]
+            # else:
+            #     obj = getattr(obj, fld)
+            try:
                 obj = obj[fld]
-            else:
+            except  (KeyError, TypeError, AttributeError):
                 obj = getattr(obj, fld)
-    except KeyError or AttributeError as e:
-        print(obj)
+    except (KeyError, AttributeError) as e:
+        # print(obj)
         raise e
     return obj
 
-
+# ---------------------------------------------------------------------------------------------------------------
+# processing raw imu dict handlers
+# ---------------------------------------------------------------------------------------------------------------
 def process_carla_imu_message(msg) -> dict[str, float]:
     """
     Convert a carla IMU message, process it, and to a dictionary for six axles.
@@ -28,7 +35,6 @@ def process_carla_imu_message(msg) -> dict[str, float]:
     """
     g = 9.80665
     get = get_field # alias for simplicity
-    result = {}
     result = {}
     # linear_acceleration.x
     result[SURGE_NAME] = get(msg, "linear_acceleration", "x")       # :contentReference[oaicite:5]{index=5}
@@ -54,6 +60,24 @@ def process_carla_imu_message(msg) -> dict[str, float]:
         # it is a dict so no sec attr, use its plain timestamp
         result[TIMESTAMP_NAME] = get(msg, "header", "stamp")
     return result
+
+def process_identity_imu_message(msg) -> dict[str, float]:
+    get = get_field
+    result = {}
+    result[SURGE_NAME] = get(msg, SURGE_NAME)      
+    result[HEAVE_NAME] = get(msg, HEAVE_NAME)
+    result[SWAY_NAME] = get(msg, SWAY_NAME)
+    result[YAW_NAME] = get(msg, YAW_NAME)   
+    result[PITCH_NAME] = get(msg, PITCH_NAME)   
+    result[ROLL_NAME] = get(msg, ROLL_NAME)   
+    try:
+        result[TIMESTAMP_NAME] = get(msg, TIMESTAMP_NAME)
+    except (KeyError, AttributeError):
+        result[TIMESTAMP_NAME] = datetime.datetime.now().timestamp()
+    return result
+
+# ---------------------------------------------------------------------------------------------------------------
+
 
 
 def quaternion_to_euler(quaternion: list | np.ndarray):

@@ -2,7 +2,7 @@ applyCollision: true
 # available filter modes: EMA(windowed), MA 
 Yaw:
   k: 6
-  clampThreshold: 0.8
+  clampThreshold: 1.2 
   filterMode: 
     mode: EMA 
     alpha: 0.3
@@ -20,7 +20,7 @@ Roll:
   filterMode: 
     mode: EMA
     alpha: 0.3
-  gain: 1.4
+  gain: 0.95
 Sway:
   k: 6
   clampThreshold: 0.5
@@ -38,14 +38,14 @@ Surge:
     # order: 2 
     mode: EMA
     alpha: 0.2
-  gain: 1.1
+  gain: 1.5
 Heave:
   k: 8
   # don't use wiener. heave has a bias from gravity and wiener doesnt work
   filterMode: 
     mode: EMA
     alpha: 0.4
-  gain: 1.1
+  gain: 1.0
   clampThreshold: 0.5
   DynamicRangeCompressor:
     bias: 0

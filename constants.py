@@ -13,26 +13,43 @@ SWAY_NAME = "Sway"
 SURGE_NAME = "Surge"
 HEAVE_NAME = "Heave"
 
+DIM_NAMES = (YAW_NAME, PITCH_NAME, ROLL_NAME, SWAY_NAME, SURGE_NAME, HEAVE_NAME)
+
 TIMESTAMP_NAME = "Timestamp"
 
 # hardcoded config, according to the manufacturer
+# WARNING: DONT CHANGE THIS UNLESS YOU HAVE PRACTICAL REASONS
 SIX_AXIS_RANGES = {
     ROLL_NAME: 20.0,
-    YAW_NAME: 2.0,
+    YAW_NAME: 2.0, 
     PITCH_NAME: 20.0,
     SURGE_NAME: 6.0,
     HEAVE_NAME: 1.0,
     SWAY_NAME: 4.0,
 }
+# ---------------------------------------------------------------------------
+# DATA SOURCE RANGE
 # these values are by observation
+# and is per-device. denote the device and write this
+## carla ----------------------------------------
+# IMU_RANGES = {
+#     ROLL_NAME: math.pi / 2,
+#     YAW_NAME: math.pi,
+#     PITCH_NAME: math.pi / 2,
+#     SURGE_NAME: 60,
+#     HEAVE_NAME: 50,
+#     SWAY_NAME: 30,
+# }
+## evtol ----------------------------------------
 IMU_RANGES = {
-    ROLL_NAME: math.pi / 2,
-    YAW_NAME: math.pi,
+    ROLL_NAME: 90, # orientations in degrees
+    YAW_NAME: 180, # is there a bias? i.e. 0~360?
     PITCH_NAME: math.pi / 2,
-    SURGE_NAME: 60,
-    HEAVE_NAME: 50,
-    SWAY_NAME: 30,
+    SURGE_NAME: 800, # TODO: currently these three are speeds, in cm/s
+    HEAVE_NAME: 100,
+    SWAY_NAME: 50,
 }
+# ---------------------------------------------------------------------------
 
 
 """

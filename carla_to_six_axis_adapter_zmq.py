@@ -16,7 +16,7 @@ IP_ADDRESS = "192.168.1.239"
 PORT = 15620
 
 # ZMQ ports
-IMU_PORT = 5561
+IMU_PORT = 5560
 COL_PORT = 5562
 
 class IMUMotionController:
@@ -49,16 +49,38 @@ class IMUMotionController:
 
         self.recorder_imu = recorder_imu
         self.recorder_output = recorder_output
+
+        # raw imu message handlers. BEWARE OF THE ORDER OF CHAIN OF RESPONSIBILITY
+        self.raw_imu_json_handler = [process_carla_imu_message, process_identity_imu_message]
+
+        # ------------------------------------
+        # DEBUG
+        self.recv_cnt = 0
+        self.tot_time = 1e-15
+        # ------------------------------------
+
+
         print(f"IMU motion controller init finished.")
 
     def spin(self):
         while True:
-            events = dict(self.poller.poll(timeout=100))            # Poll both sockets :contentReference[oaicite:24]{index=24}
+            start_time = time.time()
+            events = dict(self.poller.poll(timeout=5))            # Poll both sockets :contentReference[oaicite:24]{index=24}
             if self.imu_sub in events:
+                self.recv_cnt += 1
                 msg = self.imu_sub.recv_json()
-                print(f"received msg: {msg}")
+                print(f"received imu msg / telemetry: {msg}")
                 # Process IMU data
-                result_dict = process_carla_imu_message(msg)
+                # TODO: add universal support of input processing
+                # result_dict = process_carla_imu_message(msg)
+                for handler in self.raw_imu_json_handler:
+                    try:
+                        result_dict = handler(msg)
+                        break
+                    except (AttributeError, KeyError):
+                        continue
+                else:
+                    raise ValueError(f"received imu message cannot be parsed by any of the handlers: {msg}")
                 if self.recorder_imu is not None:
                     self.recorder_imu.update_record(result_dict)
                 self.pack_imu_to_six_axis_value(result_dict)
@@ -75,6 +97,10 @@ class IMUMotionController:
                 collide = self.col_sub.recv_json()
                 print(f"Collision detected: {collide}")
                 self.equalizer.register_collision_frame()            # Handle collision callback
+            end_time = time.time()
+            self.tot_time += end_time - start_time
+            print(f"current recv frame rate: {self.recv_cnt / self.tot_time}")
+
 
     def stop(self):
         if self.recorder_imu is not None:
