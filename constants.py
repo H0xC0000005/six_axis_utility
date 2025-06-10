@@ -19,13 +19,21 @@ TIMESTAMP_NAME = "Timestamp"
 
 # hardcoded config, according to the manufacturer
 # WARNING: DONT CHANGE THIS UNLESS YOU HAVE PRACTICAL REASONS
+# SIX_AXIS_RANGES = {
+#     ROLL_NAME: 20.0,
+#     YAW_NAME: 2.0, 
+#     PITCH_NAME: 20.0,
+#     SURGE_NAME: 6.0,
+#     HEAVE_NAME: 1.0,
+#     SWAY_NAME: 4.0,
+# }
 SIX_AXIS_RANGES = {
-    ROLL_NAME: 20.0,
+    ROLL_NAME: 19.0,
     YAW_NAME: 2.0, 
-    PITCH_NAME: 20.0,
-    SURGE_NAME: 6.0,
-    HEAVE_NAME: 1.0,
-    SWAY_NAME: 4.0,
+    PITCH_NAME: 19.0,
+    SURGE_NAME: 5.5,
+    HEAVE_NAME: 0.95,
+    SWAY_NAME: 3.5,
 }
 # ---------------------------------------------------------------------------
 # DATA SOURCE RANGE
@@ -41,13 +49,22 @@ SIX_AXIS_RANGES = {
 #     SWAY_NAME: 30,
 # }
 ## evtol ----------------------------------------
+# IMU_RANGES = {
+#     ROLL_NAME: 90, # orientations in degrees
+#     YAW_NAME: 180, # is there a bias? i.e. 0~360?
+#     PITCH_NAME: 90,
+#     SURGE_NAME: 800, # TODO: currently these three are speeds, in cm/s
+#     HEAVE_NAME: 4000, # adjust heave to disable it literally since up and down speeds are great
+#     SWAY_NAME: 500,
+# }
+## wingflight ----------------------------------------
 IMU_RANGES = {
-    ROLL_NAME: 90, # orientations in degrees
+    ROLL_NAME: 110, # orientations in degrees
     YAW_NAME: 180, # is there a bias? i.e. 0~360?
-    PITCH_NAME: math.pi / 2,
-    SURGE_NAME: 800, # TODO: currently these three are speeds, in cm/s
-    HEAVE_NAME: 100,
-    SWAY_NAME: 50,
+    PITCH_NAME: 110,
+    SURGE_NAME: 8000, # TODO: currently these three are speeds, in cm/s
+    HEAVE_NAME: 3000, # adjust heave to disable it literally since up and down speeds are great
+    SWAY_NAME: 2000,
 }
 # ---------------------------------------------------------------------------
 

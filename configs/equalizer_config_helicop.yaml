@@ -7,6 +7,7 @@ Yaw:
     mode: EMA 
     alpha: 0.3
   enable: true
+  gain: 1.3
 Pitch:
   k: 5
   filterMode: 
@@ -28,7 +29,7 @@ Sway:
     mode: EMA 
     # noise: 0.5
     alpha: 0.3
-  gain: 0.8
+  gain: 0.5
 Surge:
   k: 4
   clampThreshold: 1.1
@@ -39,14 +40,14 @@ Surge:
     # order: 2 
     mode: EMA
     alpha: 0.2
-  gain: 1.5
+  gain: 0.5
 Heave:
   k: 8
   # don't use wiener. heave has a bias from gravity and wiener doesnt work
   filterMode: 
     mode: EMA
     alpha: 0.4
-  gain: 1.0
+  gain: 0.7
   clampThreshold: 0.5
   DynamicRangeCompressor:
     bias: 0

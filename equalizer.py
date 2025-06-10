@@ -223,7 +223,7 @@ class Equalizer:
         acceleration = self.kalman_filter.x[2, 0]
         return acceleration
 
-    def clamp_value_dim(
+    def clamp_value_dim_change(
         self,
         dim_name: str,
         *,
@@ -261,7 +261,7 @@ class Equalizer:
         result = {}
         for dim in self.dim_names:
             cur_value = None if values is None else values[dim]
-            result[dim] = self.clamp_value_dim(dim, value=cur_value, inplace=inplace)
+            result[dim] = self.clamp_value_dim_change(dim, value=cur_value, inplace=inplace)
         return result
 
     def clamp_last_values_to_six_axis_limit_dim(
@@ -285,7 +285,7 @@ class Equalizer:
         result = {}
         for dim in self.dim_names:
             cur_value = None if values is None else values[dim]
-            result[dim] = self.clamp_value_dim(dim, value=cur_value, inplace=inplace)
+            result[dim] = self.clamp_last_values_to_six_axis_limit_dim(dim, value=cur_value, inplace=inplace)
         return result
 
     def update_last_values(self, values_dict: dict[str, float]):

@@ -12,7 +12,7 @@ from equalizer import Equalizer
 from recorder import Recorder
 
 # TODO: six axis platform machine specs hardcoded. may need refactoring
-IP_ADDRESS = "192.168.1.239"
+IP_ADDRESS = "192.168.1.243"
 PORT = 15620
 
 # ZMQ ports
@@ -65,7 +65,7 @@ class IMUMotionController:
     def spin(self):
         while True:
             start_time = time.time()
-            events = dict(self.poller.poll(timeout=5))            # Poll both sockets :contentReference[oaicite:24]{index=24}
+            events = dict(self.poller.poll(timeout=100))            # Poll both sockets :contentReference[oaicite:24]{index=24}
             if self.imu_sub in events:
                 self.recv_cnt += 1
                 msg = self.imu_sub.recv_json()
@@ -126,7 +126,7 @@ class IMUMotionController:
 
 
 def main(args=None):
-    equalizer = Equalizer("./configs/equalizer_config.yaml")
+    equalizer = Equalizer("./configs/equalizer_config_wingflight.yaml")
     # recorder_imu = Recorder("./configs/recorder_config.yaml")
     # recorder_output = Recorder("./configs/recorder_config.yaml")
     recorder_imu = None
