@@ -2,11 +2,12 @@ applyCollision: true
 # available filter modes: EMA(windowed), MA 
 Yaw:
   k: 6
-  clampThreshold: 1.2 
+  clampThreshold: 1.6
   filterMode: 
     mode: EMA 
     alpha: 0.3
-  enable: true
+  enable: false
+  gain: 10
 Pitch:
   k: 5
   filterMode: 

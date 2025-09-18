@@ -12,11 +12,13 @@ from equalizer import Equalizer
 from recorder import Recorder
 
 # TODO: six axis platform machine specs hardcoded. may need refactoring
-IP_ADDRESS = "192.168.1.243"
+SIXAX_IP_ADDRESS = "192.168.1.241"
+# SIXAX_IP_ADDRESS = "*"
+INCOMING_IP_ADDRESS = "127.0.0.1"
 PORT = 15620
 
 # ZMQ ports
-IMU_PORT = 5560
+IMU_PORT = 5561
 COL_PORT = 5562
 
 class IMUMotionController:
@@ -29,11 +31,13 @@ class IMUMotionController:
         self.context = zmq.Context()
         # Subscribe to IMU and collision
         self.imu_sub = self.context.socket(zmq.SUB)
-        self.imu_sub.connect(f"tcp://127.0.0.1:{IMU_PORT}")
+        print(f"binding to incoming address: {INCOMING_IP_ADDRESS} and imu port {IMU_PORT}")
+        # self.imu_sub.connect(f"tcp://127.0.0.1:{IMU_PORT}")
+        self.imu_sub.connect(f"tcp://{INCOMING_IP_ADDRESS}:{IMU_PORT}")
         self.imu_sub.setsockopt(zmq.SUBSCRIBE, b"")               # All IMU data :contentReference[oaicite:22]{index=22}
 
         self.col_sub = self.context.socket(zmq.SUB)
-        self.col_sub.connect(f"tcp://127.0.0.1:{COL_PORT}")
+        self.col_sub.connect(f"tcp://{INCOMING_IP_ADDRESS}:{COL_PORT}")
         self.col_sub.setsockopt(zmq.SUBSCRIBE, b"")               # All collision data :contentReference[oaicite:23]{index=23}
 
         self.poller = zmq.Poller()
@@ -42,7 +46,7 @@ class IMUMotionController:
 
         self.control_sender = ControlSender()
         
-        self.end_point = (IP_ADDRESS, PORT)
+        self.end_point = (SIXAX_IP_ADDRESS, PORT)
         self.udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.equalizer = equalizer
         self.do_equalization = True
@@ -51,7 +55,7 @@ class IMUMotionController:
         self.recorder_output = recorder_output
 
         # raw imu message handlers. BEWARE OF THE ORDER OF CHAIN OF RESPONSIBILITY
-        self.raw_imu_json_handler = [process_carla_imu_message, process_identity_imu_message]
+        self.raw_imu_json_handler = [process_carla_imu_message, process_control_ros1_imu_message, process_identity_imu_message]
 
         # ------------------------------------
         # DEBUG
