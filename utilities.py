@@ -78,13 +78,15 @@ def process_carla_imu_message(msg) -> dict[str, float]:
 def process_control_ros1_imu_message(msg) -> dict[str, float]:
     get = get_field
     result = {}
-    result[SURGE_NAME] = get(msg, ["linear_acceleration", "x"])      
-    result[HEAVE_NAME] = get(msg, ["linear_acceleration", "z"])
-    result[SWAY_NAME] = get(msg, ["linear_acceleration", "y"])
-    result[YAW_NAME] = get(msg, ["angular_velocity", "z"])   
-    result[PITCH_NAME] = get(msg, ["angular_velocity", "y"])   
-    result[ROLL_NAME] = get(msg, ["angular_velocity", "x"])   
+    result[SURGE_NAME] = get(msg, "linear_acceleration", "x")      
+    result[HEAVE_NAME] = get(msg, "linear_acceleration", "z")
+    result[HEAVE_NAME] += 9.8
+    result[SWAY_NAME] = get(msg, "linear_acceleration", "y")
+    result[YAW_NAME] = get(msg, "angular_velocity", "z")   
+    result[PITCH_NAME] = get(msg, "angular_velocity", "y")   
+    result[ROLL_NAME] = get(msg, "angular_velocity", "x")   
     result[TIMESTAMP_NAME] = datetime.datetime.now().timestamp()
+    print(result)
     return result
 
 def process_identity_imu_message(msg) -> dict[str, float]:

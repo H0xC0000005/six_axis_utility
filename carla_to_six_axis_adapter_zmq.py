@@ -12,13 +12,16 @@ from equalizer import Equalizer
 from recorder import Recorder
 
 # TODO: six axis platform machine specs hardcoded. may need refactoring
-SIXAX_IP_ADDRESS = "192.168.1.241"
+# SIXAX_IP_ADDRESS = "192.168.1.241"
+SIXAX_IP_ADDRESS = "10.42.0.73"
+# SIXAX_IP_ADDRESS = "192.168.1.43"
 # SIXAX_IP_ADDRESS = "*"
 INCOMING_IP_ADDRESS = "127.0.0.1"
 PORT = 15620
 
 # ZMQ ports
-IMU_PORT = 5561
+# IMU_PORT = 5561
+IMU_PORT = 11512
 COL_PORT = 5562
 
 class IMUMotionController:
@@ -130,7 +133,7 @@ class IMUMotionController:
 
 
 def main(args=None):
-    equalizer = Equalizer("./configs/equalizer_config_wingflight.yaml")
+    equalizer = Equalizer("/mnt/data/six_axis_utility/configs/equalizer_config_teleop.yaml")
     # recorder_imu = Recorder("./configs/recorder_config.yaml")
     # recorder_output = Recorder("./configs/recorder_config.yaml")
     recorder_imu = None

@@ -58,13 +58,22 @@ SIX_AXIS_RANGES = {
 #     SWAY_NAME: 500,
 # }
 ## wingflight ----------------------------------------
+# IMU_RANGES = {
+#     ROLL_NAME: 110, # orientations in degrees
+#     YAW_NAME: 180, # is there a bias? i.e. 0~360?
+#     PITCH_NAME: 110,
+#     SURGE_NAME: 8000, # TODO: currently these three are speeds, in cm/s
+#     HEAVE_NAME: 3000, # adjust heave to disable it literally since up and down speeds are great
+#     SWAY_NAME: 2000,
+# }
+## teleop ----------------------------------------
 IMU_RANGES = {
-    ROLL_NAME: 110, # orientations in degrees
-    YAW_NAME: 180, # is there a bias? i.e. 0~360?
-    PITCH_NAME: 110,
-    SURGE_NAME: 8000, # TODO: currently these three are speeds, in cm/s
-    HEAVE_NAME: 3000, # adjust heave to disable it literally since up and down speeds are great
-    SWAY_NAME: 2000,
+    ROLL_NAME: 1.0,
+    YAW_NAME: 1.0,
+    PITCH_NAME: 1.0,
+    SURGE_NAME: 5, # TODO: currently these three are speeds, in cm/s
+    HEAVE_NAME: 5, # adjust heave to disable it literally since up and down speeds are great
+    SWAY_NAME: 5,
 }
 # ---------------------------------------------------------------------------
 
