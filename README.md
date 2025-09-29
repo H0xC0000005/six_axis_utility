@@ -39,3 +39,11 @@ cd six_axis_utility
 
 # Install dependencies
 pip install -r requirements.txt
+
+```
+
+## How to launch the six axis platform
+for motion feed back:
+open desktop->gzsec->simple game engine. an additional blue gear icon should be added into the taskbar. you can right click it to call out telemetry board, which shows whatever game pack it receives, and useful for network debugging.
+
+for joystick commands. open $HOME/Documents/PythonScripts, and there's variety of joystick scripts.
