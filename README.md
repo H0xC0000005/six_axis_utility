@@ -41,6 +41,12 @@ cd six_axis_utility
 pip install -r requirements.txt
 
 ```
+for dependencies, requirements.txt is the pip dependencies in carla container. that dependency is sufficient to run both carla and this repo.<br>
+if you want a minimal environment that can run this repo, use conda environment exports:
+```bash
+conda env create -n six_ax -f six_ax_driver.yml
+```
+
 
 ## How to launch the six axis platform
 for motion feed back:
